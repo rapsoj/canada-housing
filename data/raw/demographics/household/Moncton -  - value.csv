@@ -1,0 +1,12 @@
+Moncton — Historical Average Value of Owner-occupied Dwellings ($)  
+2006 to 2016
+,Single-Detached,Semi-Detached,Row,Duplex,Low-Rise Apt.,High-Rise Apt.,Other,Total,
+2006,"147,272","134,857","115,736","135,509","153,286","130,630","53,713","139,603",
+2011,"183,353","160,505","143,932","169,078","186,411",0,"71,909","172,526",
+2016,"203,261","163,567","177,683","192,006","183,238",0,"72,932","191,255",
+
+Notes
+"Other dwellings comprise other single-attached houses, mobile homes, and other movable dwellings."
+Low-rise refers to apartments in buildings with fewer than 5 storeys
+High-rise refers to apartments in buildings with 5 or more storeys
+Source,"CMHC, adapted from Statistics Canada (Census of Canada and National Household Survey)"
