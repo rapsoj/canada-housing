@@ -1,0 +1,43 @@
+Regina — Historical Median Rent by Bedroom Type  
+1990 to 2023 Row / Apartment October
+,Bachelor,,1 Bedroom,,2 Bedroom,,3 Bedroom +,,Total,,
+1990 October,250,a ,375,a ,475,a ,540,a ,425,a ,
+1991 October,265,a ,380,a ,475,a ,540,a ,430,a ,
+1992 October,265,a ,380,a ,475,a ,540,a ,436,a ,
+1993 October,297,a ,390,a ,475,a ,565,a ,438,a ,
+1994 October,270,a ,385,a ,475,a ,540,a ,430,a ,
+1995 October,280,a ,385,a ,476,a ,565,a ,435,a ,
+1996 October,275,a ,395,a ,480,a ,565,a ,450,a ,
+1997 October,285,a ,405,a ,495,a ,595,a ,465,a ,
+1998 October,315,a ,425,a ,520,a ,650,a ,485,a ,
+1999 October,325,a ,460,a ,545,a ,650,a ,500,a ,
+2000 October,335,a ,465,a ,540,a ,675,a ,500,a ,
+2001 October,345,a ,475,a ,570,a ,693,a ,525,a ,
+2002 October,345,a ,480,a ,570,a ,699,a ,535,a ,
+2003 October,353,a ,489,a ,580,a ,693,a ,545,a ,
+2004 October,360,a ,495,a ,595,a ,699,a ,559,a ,
+2005 October,370,a ,495,a ,600,a ,699,a ,560,a ,
+2006 October,375,a ,499,a ,615,a ,735,a ,570,a ,
+2007 October,395,a ,535,a ,650,a ,779,a ,600,a ,
+2008 October,479,a ,620,a ,750,a ,959,a ,688,a ,
+2009 October,505,a ,689,a ,840,a ,"1,089",a ,759,a ,
+2010 October,550,a ,750,a ,897,a ,"1,150",a ,815,a ,
+2011 October,595,a ,800,a ,935,a ,"1,189",a ,860,a ,
+2012 October,639,a ,839,a ,990,a ,"1,239",a ,900,a ,
+2013 October,669,a ,875,a ,"1,040",a ,"1,299",a ,950,a ,
+2014 October,699,a ,900,a ,"1,090",a ,"1,349",a ,990,a ,
+2015 October,709,a ,900,a ,"1,100",a ,"1,414",a ,995,a ,
+2016 October,725,a ,900,a ,"1,134",a ,"1,414",a ,"1,000",a ,
+2017 October,700,a ,915,a ,"1,150",a ,"1,414",a ,"1,014",a ,
+2018 October,700,a ,915,a ,"1,150",a ,"1,394",a ,"1,025",a ,
+2019 October,700,a ,913,a ,"1,150",a ,"1,399",a ,"1,025",a ,
+2020 October,734,a ,930,a ,"1,174",a ,"1,419",a ,"1,060",a ,
+2021 October,725,a ,930,a ,"1,174",a ,"1,399",a ,"1,055",a ,
+2022 October,734,a ,974,a ,"1,216",a ,"1,425",a ,"1,100",a ,
+2023 October,775,a ,"1,058",a ,"1,328",a ,"1,509",a ,"1,208",a ,
+
+Notes
+"The following letter codes are used to indicate the reliability of the estimates: a — Excellent, b — Very good, c — Good, d — Poor (Use with Caution))"
+** — Data suppressed to protect confidentiality or data not statistically reliable
+++ — Change in rent is not statistically significant. This means that the change in rent is not statistically different than zero (0). (Applies only to % Change of Average Rent Tables).
+Source,CMHC Rental Market Survey

@@ -1,0 +1,43 @@
+Moncton — Historical Median Rent by Bedroom Type  
+1990 to 2023 Row / Apartment October
+,Bachelor,,1 Bedroom,,2 Bedroom,,3 Bedroom +,,Total,,
+1990 October,300,a ,375,a ,445,a ,475,b ,410,a ,
+1991 October,320,a ,385,a ,455,a ,505,a ,430,a ,
+1992 October,325,a ,405,a ,470,a ,515,b ,450,a ,
+1993 October,345,a ,400,a ,485,a ,542,c ,450,a ,
+1994 October,335,a ,413,a ,490,a ,525,b ,470,a ,
+1995 October,350,a ,415,a ,495,a ,550,b ,475,a ,
+1996 October,350,a ,425,a ,498,a ,545,b ,480,a ,
+1997 October,360,a ,425,a ,510,a ,557,b ,490,a ,
+1998 October,350,a ,430,a ,520,a ,557,a ,500,a ,
+1999 October,355,a ,435,a ,525,a ,550,a ,500,a ,
+2000 October,369,b ,440,a ,545,a ,590,a ,525,a ,
+2001 October,350,b ,450,a ,550,a ,600,a ,525,a ,
+2002 October,380,a ,455,a ,565,a ,610,a ,545,a ,
+2003 October,360,a ,475,a ,575,a ,615,a ,555,a ,
+2004 October,395,a ,480,a ,595,a ,630,a ,580,a ,
+2005 October,385,a ,500,a ,600,a ,650,a ,575,a ,
+2006 October,395,b ,515,a ,625,a ,650,a ,595,a ,
+2007 October,425,a ,525,a ,640,a ,695,a ,610,a ,
+2008 October,415,a ,550,a ,650,a ,700,a ,625,a ,
+2009 October,450,b ,550,a ,670,a ,725,a ,650,a ,
+2010 October,450,a ,565,a ,690,a ,760,a ,660,a ,
+2011 October,475,a ,570,a ,700,a ,795,a ,680,a ,
+2012 October,475,b ,600,a ,725,a ,825,b ,695,a ,
+2013 October,525,a ,610,a ,735,a ,850,a ,700,a ,
+2014 October,525,a ,625,a ,750,a ,850,a ,719,a ,
+2015 October,525,a ,625,a ,750,a ,859,b ,715,a ,
+2016 October,550,a ,650,a ,775,a ,885,a ,750,a ,
+2017 October,540,a ,660,a ,775,a ,870,b ,750,a ,
+2018 October,575,b ,677,a ,795,a ,875,b ,775,a ,
+2019 October,600,b ,720,a ,825,a ,905,a ,800,a ,
+2020 October,650,a ,755,a ,873,a ,"1,000",b ,850,a ,
+2021 October,725,a ,825,a ,950,a ,"1,050",b ,910,a ,
+2022 October,785,b ,895,a ,"1,075",a ,"1,188",b ,"1,000",a ,
+2023 October,850,b ,948,a ,"1,200",a ,"1,275",c ,"1,132",a ,
+
+Notes
+"The following letter codes are used to indicate the reliability of the estimates: a — Excellent, b — Very good, c — Good, d — Poor (Use with Caution))"
+** — Data suppressed to protect confidentiality or data not statistically reliable
+++ — Change in rent is not statistically significant. This means that the change in rent is not statistically different than zero (0). (Applies only to % Change of Average Rent Tables).
+Source,CMHC Rental Market Survey

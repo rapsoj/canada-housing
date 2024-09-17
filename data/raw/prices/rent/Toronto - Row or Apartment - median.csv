@@ -1,0 +1,43 @@
+Toronto — Historical Median Rent by Bedroom Type  
+1990 to 2023 Row / Apartment October
+,Bachelor,,1 Bedroom,,2 Bedroom,,3 Bedroom +,,Total,,
+1990 October,435,a ,525,a ,635,a ,789,a ,585,a ,
+1991 October,475,a ,560,a ,687,a ,850,a ,625,a ,
+1992 October,487,a ,583,a ,721,a ,850,a ,650,a ,
+1993 October,500,a ,605,a ,749,a ,888,a ,675,a ,
+1994 October,508,a ,625,a ,751,a ,900,a ,697,a ,
+1995 October,520,a ,650,a ,780,a ,925,a ,711,a ,
+1996 October,535,a ,660,a ,800,a ,931,a ,728,a ,
+1997 October,550,a ,675,a ,800,a ,950,a ,741,a ,
+1998 October,570,a ,720,a ,850,a ,995,a ,785,a ,
+1999 October,615,a ,750,a ,885,a ,"1,033",a ,825,a ,
+2000 October,675,a ,800,a ,930,a ,"1,100",a ,875,a ,
+2001 October,675,a ,850,a ,975,a ,"1,150",a ,903,a ,
+2002 October,722,a ,869,a ,"1,000",a ,"1,195",a ,949,a ,
+2003 October,738,a ,859,a ,"1,000",a ,"1,195",a ,935,a ,
+2004 October,720,a ,850,a ,"1,000",a ,"1,200",a ,945,a ,
+2005 October,722,a ,860,a ,999,a ,"1,199",a ,939,a ,
+2006 October,725,a ,860,a ,995,a ,"1,175",a ,949,a ,
+2007 October,745,a ,870,a ,999,a ,"1,200",a ,950,a ,
+2008 October,750,a ,882,a ,"1,025",a ,"1,200",a ,962,a ,
+2009 October,748,a ,887,a ,"1,036",a ,"1,233",a ,969,a ,
+2010 October,750,a ,900,a ,"1,050",a ,"1,250",a ,990,a ,
+2011 October,799,a ,925,a ,"1,080",a ,"1,284",a ,"1,013",a ,
+2012 October,815,a ,950,a ,"1,111",a ,"1,303",a ,"1,050",a ,
+2013 October,850,a ,980,a ,"1,150",a ,"1,350",a ,"1,080",a ,
+2014 October,889,a ,"1,009",a ,"1,185",a ,"1,358",a ,"1,110",a ,
+2015 October,925,a ,"1,050",a ,"1,220",a ,"1,401",a ,"1,150",a ,
+2016 October,938,a ,"1,093",a ,"1,250",a ,"1,434",a ,"1,192",a ,
+2017 October,994,a ,"1,150",a ,"1,322",a ,"1,500",a ,"1,250",a ,
+2018 October,"1,039",a ,"1,200",a ,"1,374",a ,"1,572",a ,"1,300",a ,
+2019 October,"1,089",a ,"1,300",a ,"1,451",a ,"1,615",a ,"1,395",a ,
+2020 October,"1,200",a ,"1,400",a ,"1,550",a ,"1,741",a ,"1,484",a ,
+2021 October,"1,220",a ,"1,445",a ,"1,620",a ,"1,800",a ,"1,500",a ,
+2022 October,"1,310",a ,"1,540",a ,"1,750",a ,"1,891",a ,"1,600",a ,
+2023 October,"1,383",a ,"1,650",a ,"1,889",a ,"1,980",a ,"1,750",a ,
+
+Notes
+"The following letter codes are used to indicate the reliability of the estimates: a — Excellent, b — Very good, c — Good, d — Poor (Use with Caution))"
+** — Data suppressed to protect confidentiality or data not statistically reliable
+++ — Change in rent is not statistically significant. This means that the change in rent is not statistically different than zero (0). (Applies only to % Change of Average Rent Tables).
+Source,CMHC Rental Market Survey
