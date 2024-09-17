@@ -1,1 +1,1 @@
-![title card](images/proposal.png)
+![title card](proposal.png)
