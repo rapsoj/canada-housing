@@ -47,22 +47,22 @@ class Cleaner(BaseCleaner):
 	'Moncton': '1040/3/Moncton'
 	}
     SCRAPE_TARGETS = [
-    ['Age of Primary Household Maintainer', 'household', 'age'],
-    ['Mobility of Primary Household Maintainer', 'household', 'mobility'],
-    ['Household Type', 'household', 'type'],
-    ['Household Size', 'household', 'size'],
-    ['Immigrant Households', 'household', 'immigrant'],
-    ['Households with Seniors', 'household', 'senior'],
-    ['Households with Children Under 18', 'household', 'children'],
-    ['Activity Limitations', 'household', 'activity-limits'],
-    ['Aboriginal Households', 'household', 'aboriginal'],
-    ['Shelter Costs', 'shelter', ''],
-    ['Mortgages', 'household', 'mortgage'],
-    ['Household Income', 'household', 'income'],
-    ['Condominiums', 'household', 'condominium'],
-    ['Housing Suitability', 'household', 'suitability'],
-    ['Value of Owner-occupied Dwellings ($)', 'household', 'value'],
-    ['Period of Construction and Condition of Dwelling', 'condition', '']]
+    ('Age of Primary Household Maintainer', 'household', 'age'),
+    ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
+    ('Household Type', 'household', 'type'),
+    ('Household Size', 'household', 'size'),
+    ('Immigrant Households', 'household', 'immigrant'),
+    ('Households with Seniors', 'household', 'senior'),
+    ('Households with Children Under 18', 'household', 'children'),
+    ('Activity Limitations', 'household', 'activity-limits'),
+    ('Aboriginal Households', 'household', 'aboriginal'),
+    ('Shelter Costs', 'shelter', ''),
+    ('Mortgages', 'household', 'mortgage'),
+    ('Household Income', 'household', 'income'),
+    ('Condominiums', 'household', 'condominium'),
+    ('Housing Suitability', 'household', 'suitability'),
+    ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+    ('Period of Construction and Condition of Dwelling', 'condition', '')]
 
     CATEGORY_HEAD = 'Population, Households and Housing Stock'
 
@@ -77,16 +77,17 @@ class Cleaner(BaseCleaner):
         
 
     def download_data(self, format: str = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
-        pass
+        for category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
+            self.scrape_category(category_name, download_directory, file_postfix)
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         pass
 
 
-    def accept_terms_and_conditions(driver):
+    def accept_terms_and_conditions(self, driver):
         checkbox_xpath = '//input[@id="iAccept"]'
-        checkbox = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, 'checkbox_xpath')))
+        checkbox = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, checkbox_xpath)))
         driver.execute_script("arguments[0].click();", checkbox)
         
         button_xpath = '//p[@class="introOverlaygetStartedButton"]/a[@class="button"]'
@@ -94,8 +95,21 @@ class Cleaner(BaseCleaner):
         button.click()
 
 
-    def scrape_cma(head, name, data, desc_text, historic, sub_cat_type, sub_categories):
-        download_dir = os.path.join(os.getcwd(), 'raw', data)
+    def scrape_category(self, category_name, download_directory, file_postfix):
+        for cma, cma_code in self.CMHC_CMA_LIST.items():
+            self.scrape_cma(
+                self.CATEGORY_HEAD,
+                cma,
+                cma_code,
+                category_name,
+                download_directory,
+                file_postfix,
+                True,
+                'dwelling',
+                [])
+
+    def scrape_cma(self, head, cma, cma_code, category_name, download_directory, file_postfix, historic, sub_cat_type, sub_categories):
+        download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
         
         chrome_options = Options()
         chrome_options.add_experimental_option("prefs", {
@@ -110,7 +124,7 @@ class Cleaner(BaseCleaner):
         url = "https://www03.cmhc-schl.gc.ca/hmip-pimh/en/TableMapChart?id=7175&t=3#TableMapChart/" + cma_code
         driver.get(url)
 
-        accept_terms_and_conditions(driver)
+        self.accept_terms_and_conditions(driver)
         
         # Wait for the dropdown to be clickable
         dropdown_xpath = '//a[@class="subsection-link" and text()="' + head + '"]'
@@ -120,7 +134,7 @@ class Cleaner(BaseCleaner):
         dropdown.click()
         
         # Wait for metric link to be clickable
-        link_xpath = '//a[text()="' + name + '"]'
+        link_xpath = '//a[text()="' + category_name + '"]'
         #link_xpath = "//a[text()='Average Rent ($)'][contains(@href, 'categoryLevel2=Rental%20Condominium%20Apartments')]"
         link = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
         
@@ -195,8 +209,8 @@ class Cleaner(BaseCleaner):
                 most_recent_filename = sorted_files[0]
                 
                 # Specify the new filename
-                if desc_text != '':
-                    new_filename = cma + ' - ' + cat.replace("/", "or") + ' - ' + desc_text + '.csv'
+                if file_postfix != '':
+                    new_filename = cma + ' - ' + cat.replace("/", "or") + ' - ' + file_postfix + '.csv'
                 else:
                     new_filename = cma + ' - ' + cat.replace("/", "or") + '.csv'
                 
@@ -246,8 +260,8 @@ class Cleaner(BaseCleaner):
             most_recent_filename = sorted_files[0]
             
             # Specify the new filename
-            if desc_text != '':
-                new_filename = cma + ' - ' + ' - ' + desc_text + '.csv'
+            if file_postfix != '':
+                new_filename = cma + ' - ' + ' - ' + file_postfix + '.csv'
             else:
                 new_filename = cma + ' - ' + '.csv'
             
