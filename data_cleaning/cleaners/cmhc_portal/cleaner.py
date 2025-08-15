@@ -84,17 +84,6 @@ class Cleaner(BaseCleaner):
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         pass
 
-
-    def accept_terms_and_conditions(self, driver):
-        checkbox_xpath = '//input[@id="iAccept"]'
-        checkbox = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, checkbox_xpath)))
-        driver.execute_script("arguments[0].click();", checkbox)
-        
-        button_xpath = '//p[@class="introOverlaygetStartedButton"]/a[@class="button"]'
-        button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, button_xpath)))
-        button.click()
-
-
     def scrape_category(self, category_name, download_directory, file_postfix):
         for cma, cma_code in self.CMHC_CMA_LIST.items():
             self.scrape_cma(
@@ -124,7 +113,16 @@ class Cleaner(BaseCleaner):
         url = "https://www03.cmhc-schl.gc.ca/hmip-pimh/en/TableMapChart?id=7175&t=3#TableMapChart/" + cma_code
         driver.get(url)
 
-        self.accept_terms_and_conditions(driver)
+        # Accept the terms and conditions popup
+        # Check the checkbox
+        checkbox_xpath = '//input[@id="iAccept"]'
+        checkbox = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.XPATH, checkbox_xpath)))
+        driver.execute_script("arguments[0].click();", checkbox)
+        
+        # Click the 'get started' button
+        button_xpath = '//p[@class="introOverlaygetStartedButton"]/a[@class="button"]'
+        button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, button_xpath)))
+        button.click()
         
         # Wait for the dropdown to be clickable
         dropdown_xpath = '//a[@class="subsection-link" and text()="' + category_head + '"]'
