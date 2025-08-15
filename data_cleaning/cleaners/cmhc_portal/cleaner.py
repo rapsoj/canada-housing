@@ -98,17 +98,17 @@ class Cleaner(BaseCleaner):
     def scrape_category(self, category_name, download_directory, file_postfix):
         for cma, cma_code in self.CMHC_CMA_LIST.items():
             self.scrape_cma(
-                self.CATEGORY_HEAD,
                 cma,
                 cma_code,
+                self.CATEGORY_HEAD,
                 category_name,
-                download_directory,
-                file_postfix,
-                True,
                 'dwelling',
-                [])
+                [],
+                True,
+                download_directory,
+                file_postfix)
 
-    def scrape_cma(self, head, cma, cma_code, category_name, download_directory, file_postfix, historic, sub_cat_type, sub_categories):
+    def scrape_cma(self, cma, cma_code, category_head, category_name, sub_cat_type, sub_categories, historic, download_directory, file_postfix):
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
         
         chrome_options = Options()
@@ -127,7 +127,7 @@ class Cleaner(BaseCleaner):
         self.accept_terms_and_conditions(driver)
         
         # Wait for the dropdown to be clickable
-        dropdown_xpath = '//a[@class="subsection-link" and text()="' + head + '"]'
+        dropdown_xpath = '//a[@class="subsection-link" and text()="' + category_head + '"]'
         dropdown = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, dropdown_xpath)))
         
         # Click on the dropdown
