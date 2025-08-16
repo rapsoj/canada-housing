@@ -1,5 +1,8 @@
+import io
+import itertools
 import os
 import time
+import re
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Union
@@ -77,16 +80,27 @@ class Cleaner(BaseCleaner):
         
 
     def download_data(self, format: str = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
+        filepaths = []
         for category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
-            self.scrape_category(category_name, download_directory, file_postfix)
+            filepaths_for_category = self.scrape_category(category_name, download_directory, file_postfix)
+            filepaths.append(filepaths_for_category)
+        
+        # flatten list
+        filepaths = list(itertools.chain(*filepaths))
+        self.logger.debug(f"obtained {filepaths} from category {category_name}")
+        self.logger.info(f"obtained {len(filepaths)} files in total")
+
+        dataframes = [self.read_chmc_portal_csv(filepath) for filepath in filepaths]
+        pass # TODO combine the dataframes
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         pass
 
-    def scrape_category(self, category_name, download_directory, file_postfix):
+    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> list[list[str]]:
+        filepaths = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
-            self.scrape_cma(
+            filepaths_for_cma = self.scrape_cma(
                 cma,
                 cma_code,
                 self.CATEGORY_HEAD,
@@ -96,8 +110,13 @@ class Cleaner(BaseCleaner):
                 True,
                 download_directory,
                 file_postfix)
+            filepaths.append(filepaths_for_cma)
+        
+        self.logger.debug(f"obtained {filepaths} from category {category_name}")
+        self.logger.info(f"obtained {len(filepaths)} files from category {category_name}")
+        return filepaths
 
-    def scrape_cma(self, cma, cma_code, category_head, category_name, sub_cat_type, sub_categories, historic, download_directory, file_postfix):
+    def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[str]:
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
         
         chrome_options = Options()
@@ -150,6 +169,7 @@ class Cleaner(BaseCleaner):
             # Pause for five seconds
             time.sleep(5)
             
+        filepaths_to_be_returned = []
         # Loop through sub-categories
         if len(sub_categories) > 0:
             for cat in sub_categories:
@@ -221,6 +241,8 @@ class Cleaner(BaseCleaner):
                 
                 # Wait for a short time to ensure the rename operation completes
                 time.sleep(1)
+
+                filepaths_to_be_returned.append(new_filepath)
                 
             # Close the browser window
             driver.quit()
@@ -275,3 +297,26 @@ class Cleaner(BaseCleaner):
 
             # Close the browser window
             driver.quit()
+
+            filepaths_to_be_returned.append(new_filepath)
+        
+        self.logger.debug(f"obtained {filepaths_to_be_returned} from cma {cma}: {cma_code}")
+        self.logger.info(f"obtained {len(filepaths_to_be_returned)} files from cma {cma}: {cma_code}")
+        return filepaths_to_be_returned
+    
+    # files downloaded from the portal have non-standard csv formatting
+    def read_chmc_portal_csv(self, filepath: str) -> pd.DataFrame:
+        with open(filepath, 'r', errors='replace') as file:
+            lines = file.readlines()
+
+            # remove first 2 lines, and then all the lines after the empty line
+            lines = lines[2:]
+            for i, line in enumerate(lines):
+                if line == '\n':
+                    lines = lines[:i]
+            
+            df = pd.read_csv(io.StringIO(''.join(lines)))
+            df = df.iloc[:, :-1] # excess empty column
+            df = df.rename(columns={df.columns[0]: "Year"}) # year column missing a name
+
+            return df
