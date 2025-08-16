@@ -87,6 +87,7 @@ class Cleaner(BaseCleaner):
         
         # flatten list
         filepaths = list(itertools.chain(*filepaths))
+        filepaths = list(itertools.chain(*filepaths))
         self.logger.debug(f"obtained {filepaths} from category {category_name}")
         self.logger.info(f"obtained {len(filepaths)} files in total")
 
