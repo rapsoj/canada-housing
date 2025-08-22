@@ -21,50 +21,50 @@ from selenium.common.exceptions import TimeoutException
 class Cleaner(BaseCleaner):
     CMHC_CMA_LIST = {
 	"St. John's": "1640/3/St.%20John's",
-	'Halifax': '0580/3/Halifax',
-	'Ottawa': '1265/3/Ottawa',
-	'Québec': '1400/3/Québec',
-	'Sherbrooke': '1800/3/Sherbrooke',
-	'Trois-Rivières': '2320/3/Trois-Rivières',
-	'Montréal': '1060/3/Montréal',
-	'Oshawa': '1250/3/Oshawa',
-	'Toronto': '2270/3/Toronto',
-	'Hamilton': '0610/3/Hamilton',
-	'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
-	'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
-	'Guelph': '0460/3/Guelph',
-	'London': '0950/3/London',
-	'Windsor': '2640/3/Windsor',
-	'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
-	'Winnipeg': '2680/3/Winnipeg',
-	'Regina': '1490/3/Regina',
-	'Saskatoon': '1700/3/Saskatoon',
-	'Calgary': '0140/3/Calgary',
-	'Edmonton': '0340/3/Edmonton',
-	'Kelowna': '0670/3/Kelowna',
-	'Vancouver': '2410/3/Vancouver',
-	'Victoria': '2440/3/Victoria',
-	'Charlottetown': '3300/3/Charlottetown',
-	'Saint John': '1600/3/Saint%20John',
-	'Fredericton': '0370/3/Fredericton',
+	# 'Halifax': '0580/3/Halifax',
+	# 'Ottawa': '1265/3/Ottawa',
+	# 'Québec': '1400/3/Québec',
+	# 'Sherbrooke': '1800/3/Sherbrooke',
+	# 'Trois-Rivières': '2320/3/Trois-Rivières',
+	# 'Montréal': '1060/3/Montréal',
+	# 'Oshawa': '1250/3/Oshawa',
+	# 'Toronto': '2270/3/Toronto',
+	# 'Hamilton': '0610/3/Hamilton',
+	# 'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
+	# 'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
+	# 'Guelph': '0460/3/Guelph',
+	# 'London': '0950/3/London',
+	# 'Windsor': '2640/3/Windsor',
+	# 'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
+	# 'Winnipeg': '2680/3/Winnipeg',
+	# 'Regina': '1490/3/Regina',
+	# 'Saskatoon': '1700/3/Saskatoon',
+	# 'Calgary': '0140/3/Calgary',
+	# 'Edmonton': '0340/3/Edmonton',
+	# 'Kelowna': '0670/3/Kelowna',
+	# 'Vancouver': '2410/3/Vancouver',
+	# 'Victoria': '2440/3/Victoria',
+	# 'Charlottetown': '3300/3/Charlottetown',
+	# 'Saint John': '1600/3/Saint%20John',
+	# 'Fredericton': '0370/3/Fredericton',
 	'Moncton': '1040/3/Moncton'
 	}
     SCRAPE_TARGETS = [
     ('Age of Primary Household Maintainer', 'household', 'age'),
-    ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
-    ('Household Type', 'household', 'type'),
-    ('Household Size', 'household', 'size'),
-    ('Immigrant Households', 'household', 'immigrant'),
-    ('Households with Seniors', 'household', 'senior'),
-    ('Households with Children Under 18', 'household', 'children'),
-    ('Activity Limitations', 'household', 'activity-limits'),
-    ('Aboriginal Households', 'household', 'aboriginal'),
-    ('Shelter Costs', 'shelter', ''),
-    ('Mortgages', 'household', 'mortgage'),
-    ('Household Income', 'household', 'income'),
-    ('Condominiums', 'household', 'condominium'),
-    ('Housing Suitability', 'household', 'suitability'),
-    ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+    # ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
+    # ('Household Type', 'household', 'type'),
+    # ('Household Size', 'household', 'size'),
+    # ('Immigrant Households', 'household', 'immigrant'),
+    # ('Households with Seniors', 'household', 'senior'),
+    # ('Households with Children Under 18', 'household', 'children'),
+    # ('Activity Limitations', 'household', 'activity-limits'),
+    # ('Aboriginal Households', 'household', 'aboriginal'),
+    # ('Shelter Costs', 'shelter', ''),
+    # ('Mortgages', 'household', 'mortgage'),
+    # ('Household Income', 'household', 'income'),
+    # ('Condominiums', 'household', 'condominium'),
+    # ('Housing Suitability', 'household', 'suitability'),
+    # ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
     ('Period of Construction and Condition of Dwelling', 'condition', '')]
 
     CATEGORY_HEAD = 'Population, Households and Housing Stock'
@@ -80,28 +80,25 @@ class Cleaner(BaseCleaner):
         
 
     def download_data(self, format: str = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
-        filepaths = []
+        dataframes = []
         for category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
-            filepaths_for_category = self.scrape_category(category_name, download_directory, file_postfix)
-            filepaths.append(filepaths_for_category)
+            dataframes_for_category = self.scrape_category(category_name, download_directory, file_postfix)
+            dataframes.extend(dataframes_for_category)
         
-        # flatten list
-        filepaths = list(itertools.chain(*filepaths))
-        filepaths = list(itertools.chain(*filepaths))
-        self.logger.debug(f"obtained {filepaths} from category {category_name}")
-        self.logger.info(f"obtained {len(filepaths)} files in total")
+        self.logger.debug(f"obtained {dataframes} from category {category_name}")
+        self.logger.info(f"obtained {len(dataframes)} dataframes in total")
 
-        dataframes = [self.read_chmc_portal_csv(filepath) for filepath in filepaths]
+        dataframes
         pass # TODO combine the dataframes
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         pass
 
-    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> list[list[str]]:
-        filepaths = []
+    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
+        dataframes = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
-            filepaths_for_cma = self.scrape_cma(
+            dataframes_for_cma = self.scrape_cma(
                 cma,
                 cma_code,
                 self.CATEGORY_HEAD,
@@ -111,13 +108,13 @@ class Cleaner(BaseCleaner):
                 True,
                 download_directory,
                 file_postfix)
-            filepaths.append(filepaths_for_cma)
+            dataframes.extend(dataframes_for_cma)
         
-        self.logger.debug(f"obtained {filepaths} from category {category_name}")
-        self.logger.info(f"obtained {len(filepaths)} files from category {category_name}")
-        return filepaths
+        self.logger.debug(f"obtained {dataframes} from category {category_name}")
+        self.logger.info(f"obtained {len(dataframes)} dataframes from category {category_name}")
+        return dataframes
 
-    def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[str]:
+    def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
         
         chrome_options = Options()
@@ -170,7 +167,7 @@ class Cleaner(BaseCleaner):
             # Pause for five seconds
             time.sleep(5)
             
-        filepaths_to_be_returned = []
+        dataframes = []
         # Loop through sub-categories
         if len(sub_categories) > 0:
             for cat in sub_categories:
@@ -243,7 +240,7 @@ class Cleaner(BaseCleaner):
                 # Wait for a short time to ensure the rename operation completes
                 time.sleep(1)
 
-                filepaths_to_be_returned.append(new_filepath)
+                dataframes.append(self.read_chmc_portal_csv(new_filepath))
                 
             # Close the browser window
             driver.quit()
@@ -299,11 +296,11 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            filepaths_to_be_returned.append(new_filepath)
+            dataframes.append(self.read_chmc_portal_csv(new_filepath))
         
-        self.logger.debug(f"obtained {filepaths_to_be_returned} from cma {cma}: {cma_code}")
-        self.logger.info(f"obtained {len(filepaths_to_be_returned)} files from cma {cma}: {cma_code}")
-        return filepaths_to_be_returned
+        self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
+        self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
+        return dataframes
     
     # files downloaded from the portal have non-standard csv formatting
     def read_chmc_portal_csv(self, filepath: str) -> pd.DataFrame:
@@ -321,3 +318,6 @@ class Cleaner(BaseCleaner):
             df = df.rename(columns={df.columns[0]: "Year"}) # year column missing a name
 
             return df
+
+    def merge_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
+        pass
