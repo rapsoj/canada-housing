@@ -1,8 +1,6 @@
 import io
-import itertools
 import os
 import time
-import re
 import pandas as pd
 import numpy as np
 from typing import Dict, Any, Union
@@ -21,51 +19,52 @@ from selenium.common.exceptions import TimeoutException
 class Cleaner(BaseCleaner):
     CMHC_CMA_LIST = {
 	"St. John's": "1640/3/St.%20John's",
-	# 'Halifax': '0580/3/Halifax',
-	# 'Ottawa': '1265/3/Ottawa',
-	# 'Québec': '1400/3/Québec',
-	# 'Sherbrooke': '1800/3/Sherbrooke',
-	# 'Trois-Rivières': '2320/3/Trois-Rivières',
-	# 'Montréal': '1060/3/Montréal',
-	# 'Oshawa': '1250/3/Oshawa',
-	# 'Toronto': '2270/3/Toronto',
-	# 'Hamilton': '0610/3/Hamilton',
-	# 'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
-	# 'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
-	# 'Guelph': '0460/3/Guelph',
-	# 'London': '0950/3/London',
-	# 'Windsor': '2640/3/Windsor',
-	# 'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
-	# 'Winnipeg': '2680/3/Winnipeg',
-	# 'Regina': '1490/3/Regina',
-	# 'Saskatoon': '1700/3/Saskatoon',
-	# 'Calgary': '0140/3/Calgary',
-	# 'Edmonton': '0340/3/Edmonton',
-	# 'Kelowna': '0670/3/Kelowna',
-	# 'Vancouver': '2410/3/Vancouver',
-	# 'Victoria': '2440/3/Victoria',
-	# 'Charlottetown': '3300/3/Charlottetown',
-	# 'Saint John': '1600/3/Saint%20John',
-	# 'Fredericton': '0370/3/Fredericton',
+	'Halifax': '0580/3/Halifax',
+	'Ottawa': '1265/3/Ottawa',
+	'Québec': '1400/3/Québec',
+	'Sherbrooke': '1800/3/Sherbrooke',
+	'Trois-Rivières': '2320/3/Trois-Rivières',
+	'Montréal': '1060/3/Montréal',
+	'Oshawa': '1250/3/Oshawa',
+	'Toronto': '2270/3/Toronto',
+	'Hamilton': '0610/3/Hamilton',
+	'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
+	'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
+	'Guelph': '0460/3/Guelph',
+	'London': '0950/3/London',
+	'Windsor': '2640/3/Windsor',
+	'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
+	'Winnipeg': '2680/3/Winnipeg',
+	'Regina': '1490/3/Regina',
+	'Saskatoon': '1700/3/Saskatoon',
+	'Calgary': '0140/3/Calgary',
+	'Edmonton': '0340/3/Edmonton',
+	'Kelowna': '0670/3/Kelowna',
+	'Vancouver': '2410/3/Vancouver',
+	'Victoria': '2440/3/Victoria',
+	'Charlottetown': '3300/3/Charlottetown',
+	'Saint John': '1600/3/Saint%20John',
+	'Fredericton': '0370/3/Fredericton',
 	'Moncton': '1040/3/Moncton'
 	}
     SCRAPE_TARGETS = [
     ('Age of Primary Household Maintainer', 'household', 'age'),
-    # ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
-    # ('Household Type', 'household', 'type'),
-    # ('Household Size', 'household', 'size'),
-    # ('Immigrant Households', 'household', 'immigrant'),
-    # ('Households with Seniors', 'household', 'senior'),
-    # ('Households with Children Under 18', 'household', 'children'),
-    # ('Activity Limitations', 'household', 'activity-limits'),
-    # ('Aboriginal Households', 'household', 'aboriginal'),
-    # ('Shelter Costs', 'shelter', ''),
-    # ('Mortgages', 'household', 'mortgage'),
-    # ('Household Income', 'household', 'income'),
-    # ('Condominiums', 'household', 'condominium'),
-    # ('Housing Suitability', 'household', 'suitability'),
-    # ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-    ('Period of Construction and Condition of Dwelling', 'condition', '')]
+    ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
+    ('Household Type', 'household', 'type'),
+    ('Household Size', 'household', 'size'),
+    ('Immigrant Households', 'household', 'immigrant'),
+    ('Households with Seniors', 'household', 'senior'),
+    ('Households with Children Under 18', 'household', 'children'),
+    ('Activity Limitations', 'household', 'activity-limits'),
+    ('Aboriginal Households', 'household', 'aboriginal'),
+    ('Shelter Costs', 'shelter', ''),
+    ('Mortgages', 'household', 'mortgage'),
+    ('Household Income', 'household', 'income'),
+    ('Condominiums', 'household', 'condominium'),
+    ('Housing Suitability', 'household', 'suitability'),
+    ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+    ('Period of Construction and Condition of Dwelling', 'condition', '')
+    ]
 
     CATEGORY_HEAD = 'Population, Households and Housing Stock'
 
@@ -80,22 +79,29 @@ class Cleaner(BaseCleaner):
         
 
     def download_data(self, format: str = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
+        if format not in ['dataframe', 'array']:
+            raise ValueError(f'{format} is not a valid value for format parameter')
+
         dataframes = []
         for category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
-            dataframes_for_category = self.scrape_category(category_name, download_directory, file_postfix)
-            dataframes.extend(dataframes_for_category)
+            dataframe = self.scrape_category(category_name, download_directory, file_postfix)
+            dataframes.append(dataframe)
         
         self.logger.debug(f"obtained {dataframes} from category {category_name}")
         self.logger.info(f"obtained {len(dataframes)} dataframes in total")
 
-        dataframes
-        pass # TODO combine the dataframes
+        merged_dataframes = self.merge_dataframes(dataframes)
+        
+        if format == 'dataframe':
+            return merged_dataframes
+        else:
+            return merged_dataframes.to_numpy()
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         pass
 
-    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
+    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
         dataframes = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
             dataframes_for_cma = self.scrape_cma(
@@ -112,7 +118,7 @@ class Cleaner(BaseCleaner):
         
         self.logger.debug(f"obtained {dataframes} from category {category_name}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from category {category_name}")
-        return dataframes
+        return pd.concat(dataframes)
 
     def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
@@ -240,7 +246,7 @@ class Cleaner(BaseCleaner):
                 # Wait for a short time to ensure the rename operation completes
                 time.sleep(1)
 
-                dataframes.append(self.read_chmc_portal_csv(new_filepath))
+                dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, category_name + ' - ' + cat))
                 
             # Close the browser window
             driver.quit()
@@ -296,14 +302,14 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            dataframes.append(self.read_chmc_portal_csv(new_filepath))
+            dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, category_name))
         
         self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
         return dataframes
     
     # files downloaded from the portal have non-standard csv formatting
-    def read_chmc_portal_csv(self, filepath: str) -> pd.DataFrame:
+    def read_chmc_portal_csv(self, filepath: str, cma_code: str, col_prefix: str) -> pd.DataFrame:
         with open(filepath, 'r', errors='replace') as file:
             lines = file.readlines()
 
@@ -315,9 +321,17 @@ class Cleaner(BaseCleaner):
             
             df = pd.read_csv(io.StringIO(''.join(lines)))
             df = df.iloc[:, :-1] # excess empty column
-            df = df.rename(columns={df.columns[0]: "Year"}) # year column missing a name
+            df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
+            df.insert(loc=0, column='cma_code', value=cma_code)
+            df.columns = list(df.columns[:2]) + [col_prefix + ' - ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
 
             return df
 
-    def merge_dataframes(dataframes: list[pd.DataFrame]) -> pd.DataFrame:
-        pass
+    def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
+        merged = dataframes[0]
+        for dataframe in dataframes[1:]:
+            merged = pd.merge(merged, dataframe, on=['year', 'cma_code'])
+
+        merged.set_index(['year', 'cma_code'], inplace=True)
+        merged.sort_index(inplace=True)
+        return merged
