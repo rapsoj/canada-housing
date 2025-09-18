@@ -91,7 +91,10 @@ class Cleaner(BaseCleaner):
         self.logger.info(f"obtained {len(dataframes)} dataframes in total")
 
         merged_dataframes = self.merge_dataframes(dataframes)
-        
+
+        merged_dataframes.to_csv('chmc_data.csv')
+        exit(0)
+
         if format == 'dataframe':
             return merged_dataframes
         else:
