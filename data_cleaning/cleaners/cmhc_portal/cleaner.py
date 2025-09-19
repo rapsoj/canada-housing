@@ -92,9 +92,6 @@ class Cleaner(BaseCleaner):
 
         merged_dataframes = self.merge_dataframes(dataframes)
 
-        merged_dataframes.to_csv('chmc_data.csv')
-        exit(0)
-
         if format == 'dataframe':
             return merged_dataframes
         else:
@@ -102,7 +99,7 @@ class Cleaner(BaseCleaner):
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
-        pass
+        return raw_data # temporary
 
     def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
         dataframes = []
@@ -326,8 +323,8 @@ class Cleaner(BaseCleaner):
             df = df.iloc[:, :-1] # excess empty column
             df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
             df.insert(loc=0, column='cma_code', value=cma_code)
-            df.columns = list(df.columns[:2]) + [col_prefix + ' - ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
-
+            df.columns = list(df.columns[:2]) + [col_prefix + '   ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
+            df = df.rename(columns=lambda col: col.replace(' ', '_')) # remove spaces from column names
             return df
 
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
