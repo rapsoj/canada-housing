@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import time
 import pandas as pd
 import numpy as np
@@ -323,8 +324,8 @@ class Cleaner(BaseCleaner):
             df = df.iloc[:, :-1] # excess empty column
             df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
             df.insert(loc=0, column='cma_code', value=cma_code)
-            df.columns = list(df.columns[:2]) + [col_prefix + '   ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
-            df = df.rename(columns=lambda col: col.replace(' ', '_')) # remove spaces from column names
+            df.columns = list(df.columns[:2]) + [col_prefix + '  ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
+            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
             return df
 
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
