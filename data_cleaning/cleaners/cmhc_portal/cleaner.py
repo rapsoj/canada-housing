@@ -320,7 +320,7 @@ class Cleaner(BaseCleaner):
                 if line == '\n':
                     lines = lines[:i]
             
-            df = pd.read_csv(io.StringIO(''.join(lines)))
+            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
             df = df.iloc[:, :-1] # excess empty column
             df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
             df.insert(loc=0, column='cma_code', value=cma_code)
