@@ -322,6 +322,15 @@ class Cleaner(BaseCleaner):
             
             df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
             df = df.iloc[:, :-1] # excess empty column
+
+            def convert_to_numeric(cell: str) -> int:
+                try:
+                    return int(cell)
+                except:
+                    self.logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as 0")
+                    return 0
+            df = df.map(convert_to_numeric)
+
             df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
             df.insert(loc=0, column='cma_code', value=cma_code)
             df.columns = list(df.columns[:2]) + [col_prefix + '  ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
