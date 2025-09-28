@@ -123,7 +123,7 @@ class Cleaner(BaseCleaner):
 
     def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
-        
+
         chrome_options = Options()
         chrome_options.add_experimental_option("prefs", {
             "download.default_directory": download_dir,
@@ -323,12 +323,19 @@ class Cleaner(BaseCleaner):
             df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
             df = df.iloc[:, :-1] # excess empty column
 
-            def convert_to_numeric(cell: str) -> int:
+            def convert_to_numeric(cell) -> Union[np.int64, float]:
                 try:
-                    return int(cell)
+                    if isinstance(cell, str):
+                        cell = cell.replace(',', '').replace(' ', '').strip()
+                    cell = np.int64(cell)
+                    if cell == 0:
+                        self.logger.warning(f"setting zero in {filepath} as nan")
+                        return np.nan    
+                    return cell
                 except:
-                    self.logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as 0")
-                    return 0
+                    self.logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
+
+                    return np.nan
             df = df.map(convert_to_numeric)
 
             df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
