@@ -349,6 +349,5 @@ class Cleaner(BaseCleaner):
         for dataframe in dataframes[1:]:
             merged = pd.merge(merged, dataframe, on=['year', 'cma_code'])
 
-        merged.set_index(['year', 'cma_code'], inplace=True)
-        merged.sort_index(inplace=True)
+        merged.sort_values(by=['cma_code', 'year'], inplace=True)
         return merged
