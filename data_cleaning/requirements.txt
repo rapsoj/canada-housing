@@ -3,3 +3,5 @@ PyYAML
 numpy
 rasterio
 scipy
+selenium
+webdriver-manager

@@ -118,7 +118,7 @@ class Cleaner(BaseCleaner):
     def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
         dataframes = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
-            dataframes_for_cma = self.scrape_cma(
+            dataframes_for_cma = self.retry_func(self.scrape_cma,
                 cma,
                 cma_code,
                 self.CATEGORY_HEAD,
@@ -136,6 +136,18 @@ class Cleaner(BaseCleaner):
 
     def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
         download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
+
+
+        # check if we've already scraped this data
+        if file_postfix != '':
+            existing_filename = cma + ' - ' + ' - ' + file_postfix + '.csv'
+        else:
+            existing_filename = cma + ' - ' + '.csv'
+        existing_filename = os.path.join(download_dir, existing_filename)
+        if os.path.exists(existing_filename):
+            self.logger.info(f"using cached '{existing_filename}'")
+            return [self.read_chmc_portal_csv(existing_filename, cma_code, category_name)]
+        
 
         chrome_options = Options()
         chrome_options.add_experimental_option("prefs", {
@@ -364,3 +376,16 @@ class Cleaner(BaseCleaner):
 
         merged.sort_values(by=['cma_code', 'year'], inplace=True)
         return merged
+
+    # to handle network issues with selenium and the CHMC portal
+    def retry_func(self, func, *args, **kwargs):
+        NUM_ATTEMPTS = 3
+        for attempt in range(NUM_ATTEMPTS):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if attempt < NUM_ATTEMPTS - 1:
+                    self.logger.warning(f"Attempt {attempt + 1} failed with error: {e}")
+                else:
+                    self.logger.error("Max retries reached. Raising exception.")
+                    raise e
