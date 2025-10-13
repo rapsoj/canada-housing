@@ -53,6 +53,7 @@ class Cleaner(BaseCleaner):
 	'Kelowna': '0670/3/Kelowna',
 	'Vancouver': '2410/3/Vancouver',
 	'Victoria': '2440/3/Victoria',
+    'Charlottetown': '3300/3/Charlottetown',
     'Abbotsford - Mission': '0110/3/Abbotsford - Mission',
     'Nanaimo': '1100/3/Nanaimo',
     'Kamloops': '0650/3/Kamloops',
