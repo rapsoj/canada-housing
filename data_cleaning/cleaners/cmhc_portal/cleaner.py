@@ -1,3 +1,4 @@
+from enum import StrEnum
 import io
 import os
 import re
@@ -15,7 +16,6 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 
 class Cleaner(BaseCleaner):
     CMHC_CMA_LIST = {
@@ -62,26 +62,32 @@ class Cleaner(BaseCleaner):
 	'Fredericton': '0370/3/Fredericton',
 	'Moncton': '1040/3/Moncton'
 	}
-    SCRAPE_TARGETS = [
-    ('Age of Primary Household Maintainer', 'household', 'age'),
-    ('Mobility of Primary Household Maintainer', 'household', 'mobility'),
-    ('Household Type', 'household', 'type'),
-    ('Household Size', 'household', 'size'),
-    ('Immigrant Households', 'household', 'immigrant'),
-    ('Households with Seniors', 'household', 'senior'),
-    ('Households with Children Under 18', 'household', 'children'),
-    ('Activity Limitations', 'household', 'activity-limits'),
-    ('Aboriginal Households', 'household', 'aboriginal'),
-    ('Shelter Costs', 'shelter', ''),
-    ('Mortgages', 'household', 'mortgage'),
-    ('Household Income', 'household', 'income'),
-    ('Condominiums', 'household', 'condominium'),
-    ('Housing Suitability', 'household', 'suitability'),
-    ('Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-    ('Period of Construction and Condition of Dwelling', 'condition', '')
-    ]
 
-    CATEGORY_HEAD = 'Population, Households and Housing Stock'
+    class CategoryHead(StrEnum):
+        HOUSING_STOCK = 'Population, Households and Housing Stock'
+        NEW_CONSTRUCTION = 'New Housing Construction'
+        PRIMARY_RENTAL_MARKET = 'Primary Rental MARKET'
+        SECONDARY_RENTAL_MARKET = 'Secondary Rental Market'
+
+
+    SCRAPE_TARGETS = [
+        (CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
+        (CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
+        (CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
+        (CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
+        (CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
+        (CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
+        (CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
+        (CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
+        (CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
+        (CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
+        (CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
+        (CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
+        (CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
+        (CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
+        (CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+        (CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', '')
+    ]
 
 
     def get_metadata(self) -> Dict[str, Any]:
@@ -98,8 +104,8 @@ class Cleaner(BaseCleaner):
             raise ValueError(f'{format} is not a valid value for format parameter')
 
         dataframes = []
-        for category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
-            dataframe = self.scrape_category(category_name, download_directory, file_postfix)
+        for category_head, category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
+            dataframe = self.scrape_category(category_head, category_name, download_directory, file_postfix)
             dataframes.append(dataframe)
         
         self.logger.debug(f"obtained {dataframes} from category {category_name}")
@@ -116,13 +122,13 @@ class Cleaner(BaseCleaner):
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         return raw_data # temporary
 
-    def scrape_category(self, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
+    def scrape_category(self, category_head:str, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
         dataframes = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
             dataframes_for_cma = self.retry_func(self.scrape_cma,
                 cma,
                 cma_code,
-                self.CATEGORY_HEAD,
+                category_head,
                 category_name,
                 'dwelling',
                 [],
