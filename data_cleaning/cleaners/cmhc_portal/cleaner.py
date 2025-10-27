@@ -1,5 +1,7 @@
+from abc import ABC, abstractmethod
 from enum import StrEnum
 import io
+import logging
 import os
 import re
 import time
@@ -16,6 +18,49 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+# some categories have different formats for downloaded csvs, so we define an interface for parsing them
+class CsvParser(ABC):
+        @abstractmethod
+        def parse(self, filepath: str, cma_code: str, col_prefix: str, logger: logging.Logger) -> pd.DataFrame:
+            pass
+
+
+class DefaultCsvParser(CsvParser):
+    def parse(self, filepath, cma_code, col_prefix, logger):
+        with open(filepath, 'r', errors='replace') as file:
+            lines = file.readlines()
+
+            # remove first 2 lines, and then all the lines after the empty line
+            lines = lines[2:]
+            for i, line in enumerate(lines):
+                if line == '\n':
+                    lines = lines[:i]
+            
+            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
+            df = df.iloc[:, :-1] # excess empty column
+
+            def convert_to_numeric(cell) -> Union[np.int64, float]:
+                try:
+                    if isinstance(cell, str):
+                        cell = cell.replace(',', '').replace(' ', '').strip()
+                    cell = np.int64(cell)
+                    if cell == 0:
+                        logger.warning(f"setting zero in {filepath} as nan")
+                        return np.nan    
+                    return cell
+                except:
+                    logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
+
+                    return np.nan
+            df = df.map(convert_to_numeric)
+
+            df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
+            df.insert(loc=0, column='cma_code', value=cma_code)
+            df.columns = list(df.columns[:2]) + [col_prefix + '  ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
+            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
+            return df
+
 
 class Cleaner(BaseCleaner):
     CMHC_CMA_LIST = {
@@ -70,12 +115,15 @@ class Cleaner(BaseCleaner):
         SECONDARY_RENTAL_MARKET = 'Secondary Rental Market'
 
     class ScrapeTarget:
-        def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str,
+        def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str, parser: CsvParser = None,
                      historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling'):
             self.category_head = category_head
             self.category_name = category_name
             self.download_directory = download_directory
             self.file_postfix = file_postfix
+            if parser is None:
+                parser = DefaultCsvParser()
+            self.parser = parser
             self.historic = historic
             self.sub_categories = sub_categories
             self.sub_cat_type = sub_cat_type
@@ -168,7 +216,7 @@ class Cleaner(BaseCleaner):
         existing_filename = os.path.join(download_dir, existing_filename)
         if os.path.exists(existing_filename):
             self.logger.info(f"using cached '{existing_filename}'")
-            return [self.read_chmc_portal_csv(existing_filename, cma_code, scrape_target.category_name)]
+            return [scrape_target.parser.parse(existing_filename, cma_code, scrape_target.category_name, self.logger)]
         
 
         chrome_options = Options()
@@ -294,7 +342,7 @@ class Cleaner(BaseCleaner):
                 # Wait for a short time to ensure the rename operation completes
                 time.sleep(1)
 
-                dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, scrape_target.category_name + ' - ' + cat))
+                dataframes.append(scrape_target.parser.parse(new_filepath, cma_code, scrape_target.category_name + ' - ' + cat, self.logger))
                 
             # Close the browser window
             driver.quit()
@@ -350,46 +398,12 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, scrape_target.category_name))
+            dataframes.append(scrape_target.parser.parse(new_filepath, cma_code, scrape_target.category_name, self.logger))
         
         self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
         return dataframes
-    
-    # files downloaded from the portal have non-standard csv formatting
-    def read_chmc_portal_csv(self, filepath: str, cma_code: str, col_prefix: str) -> pd.DataFrame:
-        with open(filepath, 'r', errors='replace') as file:
-            lines = file.readlines()
 
-            # remove first 2 lines, and then all the lines after the empty line
-            lines = lines[2:]
-            for i, line in enumerate(lines):
-                if line == '\n':
-                    lines = lines[:i]
-            
-            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
-            df = df.iloc[:, :-1] # excess empty column
-
-            def convert_to_numeric(cell) -> Union[np.int64, float]:
-                try:
-                    if isinstance(cell, str):
-                        cell = cell.replace(',', '').replace(' ', '').strip()
-                    cell = np.int64(cell)
-                    if cell == 0:
-                        self.logger.warning(f"setting zero in {filepath} as nan")
-                        return np.nan    
-                    return cell
-                except:
-                    self.logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
-
-                    return np.nan
-            df = df.map(convert_to_numeric)
-
-            df = df.rename(columns={df.columns[0]: "year"}) # year column missing a name
-            df.insert(loc=0, column='cma_code', value=cma_code)
-            df.columns = list(df.columns[:2]) + [col_prefix + '  ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
-            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
-            return df
 
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
         merged = dataframes[0]
@@ -401,7 +415,7 @@ class Cleaner(BaseCleaner):
 
     # to handle network issues with selenium and the CHMC portal
     def retry_func(self, func, *args, **kwargs):
-        NUM_ATTEMPTS = 3
+        NUM_ATTEMPTS = 5
         for attempt in range(NUM_ATTEMPTS):
             try:
                 return func(*args, **kwargs)
@@ -412,8 +426,8 @@ class Cleaner(BaseCleaner):
                     self.logger.error("Max retries reached. Raising exception.")
                     raise e
                 
-
 # notes
 # starts (SAAR) needs historic set to false
 # need to define a new CSV reading function for NEW_CONSTRUCTION, because it includes month column
 # look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
+# many of the downloaded files have different formats, will need to give each category it's own variable to hold csv parsing functions
