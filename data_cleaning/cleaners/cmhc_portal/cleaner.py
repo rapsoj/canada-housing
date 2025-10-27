@@ -69,24 +69,45 @@ class Cleaner(BaseCleaner):
         PRIMARY_RENTAL_MARKET = 'Primary Rental MARKET'
         SECONDARY_RENTAL_MARKET = 'Secondary Rental Market'
 
+    class ScrapeTarget:
+        def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str,
+                     historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling'):
+            self.category_head = category_head
+            self.category_name = category_name
+            self.download_directory = download_directory
+            self.file_postfix = file_postfix
+            self.historic = historic
+            self.sub_categories = sub_categories
+            self.sub_cat_type = sub_cat_type
 
     SCRAPE_TARGETS = [
-        (CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
-        (CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
-        (CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
-        (CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
-        (CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
-        (CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
-        (CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
-        (CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
-        (CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
-        (CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
-        (CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
-        (CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
-        (CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
-        (CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
-        (CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-        (CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', '')
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', historic=False),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed'),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed'),
+        # (CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'r
     ]
 
 
@@ -104,11 +125,11 @@ class Cleaner(BaseCleaner):
             raise ValueError(f'{format} is not a valid value for format parameter')
 
         dataframes = []
-        for category_head, category_name, download_directory, file_postfix in self.SCRAPE_TARGETS:
-            dataframe = self.scrape_category(category_head, category_name, download_directory, file_postfix)
+        for scrape_target in self.SCRAPE_TARGETS:
+            dataframe = self.scrape_category(scrape_target)
             dataframes.append(dataframe)
         
-        self.logger.debug(f"obtained {dataframes} from category {category_name}")
+        self.logger.debug(f"obtained {dataframes}")
         self.logger.info(f"obtained {len(dataframes)} dataframes in total")
 
         merged_dataframes = self.merge_dataframes(dataframes)
@@ -122,38 +143,32 @@ class Cleaner(BaseCleaner):
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
         return raw_data # temporary
 
-    def scrape_category(self, category_head:str, category_name: str, download_directory: str, file_postfix: str) -> pd.DataFrame:
+    def scrape_category(self, scrape_target: ScrapeTarget) -> pd.DataFrame:
         dataframes = []
         for cma, cma_code in self.CMHC_CMA_LIST.items():
             dataframes_for_cma = self.retry_func(self.scrape_cma,
                 cma,
                 cma_code,
-                category_head,
-                category_name,
-                'dwelling',
-                [],
-                True,
-                download_directory,
-                file_postfix)
+                scrape_target)
             dataframes.extend(dataframes_for_cma)
         
-        self.logger.debug(f"obtained {dataframes} from category {category_name}")
-        self.logger.info(f"obtained {len(dataframes)} dataframes from category {category_name}")
+        self.logger.debug(f"obtained {dataframes} from category {scrape_target.category_name}")
+        self.logger.info(f"obtained {len(dataframes)} dataframes from category {scrape_target.category_name}")
         return pd.concat(dataframes)
 
-    def scrape_cma(self, cma: str, cma_code: str, category_head: str, category_name: str, sub_cat_type: str, sub_categories: list[str], historic: bool, download_directory: str, file_postfix: str) -> list[pd.DataFrame]:
-        download_dir = os.path.join(os.getcwd(), 'raw', download_directory)
+    def scrape_cma(self, cma: str, cma_code: str, scrape_target: ScrapeTarget) -> list[pd.DataFrame]:
+        download_dir = os.path.join(os.getcwd(), 'raw', scrape_target.download_directory)
 
 
         # check if we've already scraped this data
-        if file_postfix != '':
-            existing_filename = cma + ' - ' + ' - ' + file_postfix + '.csv'
+        if scrape_target.file_postfix != '':
+            existing_filename = cma + ' - ' + ' - ' + scrape_target.file_postfix + '.csv'
         else:
             existing_filename = cma + ' - ' + '.csv'
         existing_filename = os.path.join(download_dir, existing_filename)
         if os.path.exists(existing_filename):
             self.logger.info(f"using cached '{existing_filename}'")
-            return [self.read_chmc_portal_csv(existing_filename, cma_code, category_name)]
+            return [self.read_chmc_portal_csv(existing_filename, cma_code, scrape_target.category_name)]
         
 
         chrome_options = Options()
@@ -181,14 +196,14 @@ class Cleaner(BaseCleaner):
         button.click()
         
         # Wait for the dropdown to be clickable
-        dropdown_xpath = '//a[@class="subsection-link" and text()="' + category_head + '"]'
+        dropdown_xpath = '//a[@class="subsection-link" and text()="' + scrape_target.category_head + '"]'
         dropdown = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, dropdown_xpath)))
         
         # Click on the dropdown
         dropdown.click()
         
         # Wait for metric link to be clickable
-        link_xpath = '//a[text()="' + category_name + '"]'
+        link_xpath = '//a[text()="' + scrape_target.category_name + '"]'
         #link_xpath = "//a[text()='Average Rent ($)'][contains(@href, 'categoryLevel2=Rental%20Condominium%20Apartments')]"
         link = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
         
@@ -196,7 +211,7 @@ class Cleaner(BaseCleaner):
         link.click()
         
         # Wait for the "Historical Time Periods" link to be clickable
-        if historic:
+        if scrape_target.historic:
             historical_link_xpath = '//a[text()="Historical Time Periods"]'
             historical_link = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, historical_link_xpath)))
             
@@ -208,13 +223,13 @@ class Cleaner(BaseCleaner):
             
         dataframes = []
         # Loop through sub-categories
-        if len(sub_categories) > 0:
-            for cat in sub_categories:
+        if len(scrape_target.sub_categories) > 0:
+            for cat in scrape_target.sub_categories:
             
                 # Wait for the dropdown to be clickable
-                if sub_cat_type == 'dimension':
+                if scrape_target.sub_cat_type == 'dimension':
                     dropdown_xpath = '//a[@id="filterBydimension-18Link" and contains(@class, "menu-link")]'
-                elif sub_cat_type == 'dwelling':
+                elif scrape_target.sub_cat_type == 'dwelling':
                     dropdown_xpath = '//a[@id="filterBydwelling_type_desc_enLink" and contains(@class, "menu-link")]'
                 dropdown = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, dropdown_xpath)))
                 
@@ -222,11 +237,11 @@ class Cleaner(BaseCleaner):
                 dropdown.click()
                 
                 # Wait for the sub-category option to be clickable
-                if sub_cat_type == 'dimension':
+                if scrape_target.sub_cat_type == 'dimension':
                     dropdown_xpath = '//a[@data-key="dimension-18" and @data-value="' + cat + '"]'
-                elif sub_cat_type == 'dwelling':
+                elif scrape_target.sub_cat_type == 'dwelling':
                     dropdown_xpath = '//a[@data-key="dwelling_type_desc_en" and @data-value="' + cat + '"]'
-                subcat_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, subcat_option_xpath)))
+                subcat_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, scrape_target.subcat_option_xpath)))
                 
                 # Click on the sub-category option
                 subcat_option.click()
@@ -264,8 +279,8 @@ class Cleaner(BaseCleaner):
                 most_recent_filename = sorted_files[0]
                 
                 # Specify the new filename
-                if file_postfix != '':
-                    new_filename = cma + ' - ' + cat.replace("/", "or") + ' - ' + file_postfix + '.csv'
+                if scrape_target.file_postfix != '':
+                    new_filename = cma + ' - ' + cat.replace("/", "or") + ' - ' + scrape_target.file_postfix + '.csv'
                 else:
                     new_filename = cma + ' - ' + cat.replace("/", "or") + '.csv'
                 
@@ -279,7 +294,7 @@ class Cleaner(BaseCleaner):
                 # Wait for a short time to ensure the rename operation completes
                 time.sleep(1)
 
-                dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, category_name + ' - ' + cat))
+                dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, scrape_target.category_name + ' - ' + cat))
                 
             # Close the browser window
             driver.quit()
@@ -317,8 +332,8 @@ class Cleaner(BaseCleaner):
             most_recent_filename = sorted_files[0]
             
             # Specify the new filename
-            if file_postfix != '':
-                new_filename = cma + ' - ' + ' - ' + file_postfix + '.csv'
+            if scrape_target.file_postfix != '':
+                new_filename = cma + ' - ' + ' - ' + scrape_target.file_postfix + '.csv'
             else:
                 new_filename = cma + ' - ' + '.csv'
             
@@ -335,7 +350,7 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, category_name))
+            dataframes.append(self.read_chmc_portal_csv(new_filepath, cma_code, scrape_target.category_name))
         
         self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
@@ -396,3 +411,9 @@ class Cleaner(BaseCleaner):
                 else:
                     self.logger.error("Max retries reached. Raising exception.")
                     raise e
+                
+
+# notes
+# starts (SAAR) needs historic set to false
+# need to define a new CSV reading function for NEW_CONSTRUCTION, because it includes month column
+# look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
