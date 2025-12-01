@@ -25,45 +25,51 @@ class CsvParser(ABC):
         def parse(self, filepath: str, cma_code: str, col_prefix: str, logger: logging.Logger) -> pd.DataFrame:
             pass
 
+        def _parse_csv(self, filepath: str) -> pd.DataFrame:
+            with open(filepath, 'r', errors='replace') as file:
+                lines = file.readlines()
+                # remove first 2 lines, and then all the lines after the empty line
+                lines = lines[2:]
+                for i, line in enumerate(lines):
+                    if line == '\n':
+                        lines = lines[:i]
+                
+                df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
+                return df.iloc[:, :-1] # excess empty column
+            
+
+        def _convert_cells_to_numeric(self, df: pd.DataFrame, logger: logging.Logger) -> pd.Dataframe:
+            def map(cell_raw) -> np.float64:
+                try:
+                    cell = re.sub(r'[,$ ]', '', str(cell_raw))
+                    cell = np.float64(cell)
+                    if np.isclose(cell, 0.0):
+                        logger.warning(f"setting zero '{cell}' as nan")
+                        return np.nan    
+                    return cell
+                except:
+                    logger.warning(f"could not process cell value '{cell_raw}', setting as nan")
+
+                    return np.nan 
+
+            # assume first column is date, so don't convert
+            df.iloc[:, 1:] = df.iloc[:, 1:].map(map)
+            return df
+
 # column format for the final merged dataframe is:
 # cma_code | year | month | other items...
 # month is a 3 letter lowercase abbreviation
 
 class DefaultCsvParser(CsvParser):
     def parse(self, filepath, cma_code, col_prefix, logger):
-        with open(filepath, 'r', errors='replace') as file:
-            lines = file.readlines()
+        df = self._parse_csv(filepath)
+        df = self._convert_cells_to_numeric(df, logger)
 
-            # remove first 2 lines, and then all the lines after the empty line
-            lines = lines[2:]
-            for i, line in enumerate(lines):
-                if line == '\n':
-                    lines = lines[:i]
-            
-            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
-            df = df.iloc[:, :-1] # excess empty column
-
-            def convert_to_numeric(cell) -> Union[np.int64, float]:
-                try:
-                    if isinstance(cell, str):
-                        cell = cell.replace(',', '').replace(' ', '').strip()
-                    cell = np.int64(cell)
-                    if cell == 0:
-                        logger.warning(f"setting zero in {filepath} as nan")
-                        return np.nan    
-                    return cell
-                except:
-                    logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
-
-                    return np.nan
-            df = df.map(convert_to_numeric)
-
-            df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
-            df.insert(loc=1, column='month', value=np.nan) # month column missing
-            df.insert(loc=0, column='cma_code', value=cma_code)
-            df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
-            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
-            return df
+        df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
+        df.insert(loc=0, column='cma_code', value=cma_code)
+        df.columns = list(df.columns[:2]) + [col_prefix + '  ' + col for col in df.columns[2:]] # prefix all columns except year and cma_code
+        df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
+        return df
 
 class AbbreviatedMonthYearCsvParser(CsvParser):
     def parse(self, filepath, cma_code, col_prefix, logger):
@@ -79,12 +85,14 @@ class AbbreviatedMonthYearCsvParser(CsvParser):
             df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
             df = df.iloc[:, :-1] # excess empty column
 
+            df = df.loc[:, ~df.apply(lambda col: col.dropna().astype(str).str.match(r'^[abcd] ?$').all())] # delete any 'rating' columns that are just a letter
+
             def convert_to_numeric(cell) -> Union[np.int64, float]:
                 try:
                     if isinstance(cell, str):
-                        cell = cell.replace(',', '').replace(' ', '').strip()
-                    cell = np.int64(cell)
-                    if cell == 0:
+                        cell = cell.removesuffix('%').replace(',', '').replace(' ', '').strip()
+                    cell = np.float64(cell)
+                    if np.isclose(cell, 0.0):
                         logger.warning(f"setting zero in {filepath} as nan")
                         return np.nan    
                     return cell
@@ -92,13 +100,15 @@ class AbbreviatedMonthYearCsvParser(CsvParser):
                     logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
 
                     return np.nan
-            # df = df.map(convert_to_numeric)
+            df.iloc[:, 1:] = df.iloc[:, 1:].map(convert_to_numeric)
 
             df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
             df.insert(loc=1, column='month', value=np.nan) # month column missing
             df[['month', 'year']] = df['year'].str.split(expand=True) # currently year column is of the form "month year", need to split it
             df['month'] = df['month'].map(lambda m: m.lower())
+            df['year'] = df['year'].astype(np.int64)
             df.insert(loc=0, column='cma_code', value=cma_code)
+            df['cma_code'] = df['cma_code'].astype(str)
             df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
             df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
             return df
@@ -117,6 +127,8 @@ class YearMonthCsvParser(CsvParser):
             df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
             df = df.iloc[:, :-1] # excess empty column
 
+            df = df.loc[:, ~df.apply(lambda col: col.dropna().astype(str).str.match(r'^[abcd] ?$').all())] # delete any 'rating' columns that are just a letter
+
             def convert_to_numeric(cell) -> Union[np.int64, float]:
                 try:
                     if isinstance(cell, str):
@@ -130,13 +142,15 @@ class YearMonthCsvParser(CsvParser):
                     logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
 
                     return np.nan
-            # df = df.map(convert_to_numeric)
+            df.iloc[:, 1:] = df.iloc[:, 1:].map(convert_to_numeric)
 
             df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
             df.insert(loc=1, column='month', value=np.nan) # month column missing
             df[['year', 'month']] = df['year'].str.split(expand=True) # currently year column is of the form "year month", need to split it
+            df['year'] = df['year'].astype(np.int64)
             df['month'] = df['month'].map(lambda m: m[:3].lower()) # shorten month to 3 letters
             df.insert(loc=0, column='cma_code', value=cma_code)
+            df['cma_code'] = df['cma_code'].astype(str)
             df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
             df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
             return df
@@ -144,54 +158,54 @@ class YearMonthCsvParser(CsvParser):
 
 class Cleaner(BaseCleaner):
     CMHC_CMA_LIST = {
-	"St. John's": "1640/3/St.%20John's",
-	'Halifax': '0580/3/Halifax',
-	'Ottawa': '1265/3/Ottawa',
-	'Québec': '1400/3/Québec',
-	'Sherbrooke': '1800/3/Sherbrooke',
-	'Trois-Rivières': '2320/3/Trois-Rivières',
-	'Montréal': '1060/3/Montréal',
-    'Saguenay': '0180/3/Saguenay',
-    'Drummondville': '0280/3/Drummondville',
-	'Oshawa': '1250/3/Oshawa',
-	'Toronto': '2270/3/Toronto',
-	'Hamilton': '0610/3/Hamilton',
-	'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
-	'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
-	'Guelph': '0460/3/Guelph',
-	'London': '0950/3/London',
-	'Windsor': '2640/3/Windsor',
-	'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
-    'Barrie': '0120/3/Barrie',
-    'Kingston': '0700/3/Kingston',
-    'Brantford': '0125/3/Brantford',
-    'Peterborough': '1320/3/Peterborough',
-    'Thunder Bay': '2240/3/Thunder Bay',
-    'Belleville-Quinte West': '0122/3/Belleville - Quinte West',
-	'Winnipeg': '2680/3/Winnipeg',
-	'Regina': '1490/3/Regina',
-	'Saskatoon': '1700/3/Saskatoon',
-	'Calgary': '0140/3/Calgary',
-	'Edmonton': '0340/3/Edmonton',
-    'Red Deer': '1420/3/Red Deer',
-    'Lethbridge': '0870/3/Lethbridge',
-	'Kelowna': '0670/3/Kelowna',
-	'Vancouver': '2410/3/Vancouver',
-	'Victoria': '2440/3/Victoria',
-    'Charlottetown': '3300/3/Charlottetown',
-    'Abbotsford - Mission': '0110/3/Abbotsford - Mission',
-    'Nanaimo': '1100/3/Nanaimo',
-    'Kamloops': '0650/3/Kamloops',
-    'Chilliwack': '0210/3/Chilliwack',
-	'Saint John': '1600/3/Saint%20John',
-	'Fredericton': '0370/3/Fredericton',
+	# "St. John's": "1640/3/St.%20John's",
+	# 'Halifax': '0580/3/Halifax',
+	# 'Ottawa': '1265/3/Ottawa',
+	# 'Québec': '1400/3/Québec',
+	# 'Sherbrooke': '1800/3/Sherbrooke',
+	# 'Trois-Rivières': '2320/3/Trois-Rivières',
+	# 'Montréal': '1060/3/Montréal',
+    # 'Saguenay': '0180/3/Saguenay',
+    # 'Drummondville': '0280/3/Drummondville',
+	# 'Oshawa': '1250/3/Oshawa',
+	# 'Toronto': '2270/3/Toronto',
+	# 'Hamilton': '0610/3/Hamilton',
+	# 'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
+	# 'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
+	# 'Guelph': '0460/3/Guelph',
+	# 'London': '0950/3/London',
+	# 'Windsor': '2640/3/Windsor',
+	# 'Greater Sudbury': '2000/3/Greater%20Sudbury%20%2F%20Grand%20Sudbury',
+    # 'Barrie': '0120/3/Barrie',
+    # 'Kingston': '0700/3/Kingston',
+    # 'Brantford': '0125/3/Brantford',
+    # 'Peterborough': '1320/3/Peterborough',
+    # 'Thunder Bay': '2240/3/Thunder Bay',
+    # 'Belleville-Quinte West': '0122/3/Belleville - Quinte West',
+	# 'Winnipeg': '2680/3/Winnipeg',
+	# 'Regina': '1490/3/Regina',
+	# 'Saskatoon': '1700/3/Saskatoon',
+	# 'Calgary': '0140/3/Calgary',
+	# 'Edmonton': '0340/3/Edmonton',
+    # 'Red Deer': '1420/3/Red Deer',
+    # 'Lethbridge': '0870/3/Lethbridge',
+	# 'Kelowna': '0670/3/Kelowna',
+	# 'Vancouver': '2410/3/Vancouver',
+	# 'Victoria': '2440/3/Victoria',
+    # 'Charlottetown': '3300/3/Charlottetown',
+    # 'Abbotsford - Mission': '0110/3/Abbotsford - Mission',
+    # 'Nanaimo': '1100/3/Nanaimo',
+    # 'Kamloops': '0650/3/Kamloops',
+    # 'Chilliwack': '0210/3/Chilliwack',
+	# 'Saint John': '1600/3/Saint%20John',
+	# 'Fredericton': '0370/3/Fredericton',
 	'Moncton': '1040/3/Moncton'
 	}
 
     class CategoryHead(StrEnum):
         HOUSING_STOCK = 'Population, Households and Housing Stock'
         NEW_CONSTRUCTION = 'New Housing Construction'
-        PRIMARY_RENTAL_MARKET = 'Primary Rental MARKET'
+        PRIMARY_RENTAL_MARKET = 'Primary Rental Market'
         SECONDARY_RENTAL_MARKET = 'Secondary Rental Market'
 
     class ScrapeTarget:
@@ -225,16 +239,16 @@ class Cleaner(BaseCleaner):
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
+        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
         # (CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'r
     ]
 
@@ -490,7 +504,7 @@ class Cleaner(BaseCleaner):
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
         merged = dataframes[0]
         for dataframe in dataframes[1:]:
-            merged = pd.merge(merged, dataframe, on=['year', 'month', 'cma_code'])
+            merged = pd.merge(merged, dataframe, on=['year', 'cma_code'])
 
         merged['month'] = merged['month'].astype(str)
         merged['year'] = merged['year'].astype(np.int64)
@@ -511,7 +525,10 @@ class Cleaner(BaseCleaner):
                     raise e
                 
 # notes
-# starts (SAAR) needs historic set to false
-# need to define a new CSV reading function for NEW_CONSTRUCTION, because it includes month column
 # look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
 # many of the downloaded files have different formats, will need to give each category it's own variable to hold csv parsing functions
+
+
+# ITEMS TO FIX
+# improve logic that detects rating columns that are just letters (a,b,c,d), in case of null values
+# fix title-removing logic that apparently skips the first record (see starts-saar) 
