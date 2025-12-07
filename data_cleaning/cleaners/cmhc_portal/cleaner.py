@@ -41,7 +41,7 @@ class CsvParser(ABC):
         def _convert_cells_to_numeric(self, df: pd.DataFrame, logger: logging.Logger) -> pd.Dataframe:
             def map(cell_raw) -> np.float64:
                 try:
-                    cell = re.sub(r'[,$ ]', '', str(cell_raw))
+                    cell = re.sub(r'[,$% ]', '', str(cell_raw))
                     cell = np.float64(cell)
                     if np.isclose(cell, 0.0):
                         logger.warning(f"setting zero '{cell}' as nan")
@@ -55,6 +55,11 @@ class CsvParser(ABC):
             # assume first column is date, so don't convert
             df.iloc[:, 1:] = df.iloc[:, 1:].map(map)
             return df
+        
+        def _remove_nan_or_rating_cols(self, df: pd.DataFrame) -> pd.DataFrame:
+            # delete any 'rating' columns that are just a letter, or nan
+            return df.loc[:, ~df.apply(lambda col: col.dropna().astype(str).str.match(r'^[abcd] ?$').all())]
+
 
 # column format for the final merged dataframe is:
 # cma_code | year | month | other items...
@@ -73,87 +78,38 @@ class DefaultCsvParser(CsvParser):
 
 class AbbreviatedMonthYearCsvParser(CsvParser):
     def parse(self, filepath, cma_code, col_prefix, logger):
-        with open(filepath, 'r', errors='replace') as file:
-            lines = file.readlines()
+        df = self._parse_csv(filepath)
+        df = self._convert_cells_to_numeric(df, logger)
+        df = self._remove_nan_or_rating_cols(df)
+        
+        df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
+        df.insert(loc=1, column='month', value=np.nan) # month column missing
+        df[['month', 'year']] = df['year'].str.split(expand=True) # currently year column is of the form "month year", need to split it
+        df['month'] = df['month'].map(lambda m: m.lower())
+        df['year'] = df['year'].astype(np.int64)
+        df.insert(loc=0, column='cma_code', value=cma_code)
+        df['cma_code'] = df['cma_code'].astype(str)
+        df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year month and cma_code
+        df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
+        return df
 
-            # remove first 2 lines, and then all the lines after the empty line
-            lines = lines[2:]
-            for i, line in enumerate(lines):
-                if line == '\n':
-                    lines = lines[:i]
-            
-            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
-            df = df.iloc[:, :-1] # excess empty column
-
-            df = df.loc[:, ~df.apply(lambda col: col.dropna().astype(str).str.match(r'^[abcd] ?$').all())] # delete any 'rating' columns that are just a letter
-
-            def convert_to_numeric(cell) -> Union[np.int64, float]:
-                try:
-                    if isinstance(cell, str):
-                        cell = cell.removesuffix('%').replace(',', '').replace(' ', '').strip()
-                    cell = np.float64(cell)
-                    if np.isclose(cell, 0.0):
-                        logger.warning(f"setting zero in {filepath} as nan")
-                        return np.nan    
-                    return cell
-                except:
-                    logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
-
-                    return np.nan
-            df.iloc[:, 1:] = df.iloc[:, 1:].map(convert_to_numeric)
-
-            df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
-            df.insert(loc=1, column='month', value=np.nan) # month column missing
-            df[['month', 'year']] = df['year'].str.split(expand=True) # currently year column is of the form "month year", need to split it
-            df['month'] = df['month'].map(lambda m: m.lower())
-            df['year'] = df['year'].astype(np.int64)
-            df.insert(loc=0, column='cma_code', value=cma_code)
-            df['cma_code'] = df['cma_code'].astype(str)
-            df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
-            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
-            return df
 
 class YearMonthCsvParser(CsvParser):
     def parse(self, filepath, cma_code, col_prefix, logger):
-        with open(filepath, 'r', errors='replace') as file:
-            lines = file.readlines()
+        df = self._parse_csv(filepath)
+        df = self._convert_cells_to_numeric(df, logger)
+        df = self._remove_nan_or_rating_cols(df)
 
-            # remove first 2 lines, and then all the lines after the empty line
-            lines = lines[2:]
-            for i, line in enumerate(lines):
-                if line == '\n':
-                    lines = lines[:i]
-            
-            df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
-            df = df.iloc[:, :-1] # excess empty column
-
-            df = df.loc[:, ~df.apply(lambda col: col.dropna().astype(str).str.match(r'^[abcd] ?$').all())] # delete any 'rating' columns that are just a letter
-
-            def convert_to_numeric(cell) -> Union[np.int64, float]:
-                try:
-                    if isinstance(cell, str):
-                        cell = cell.replace(',', '').replace(' ', '').strip()
-                    cell = np.int64(cell)
-                    if cell == 0:
-                        logger.warning(f"setting zero in {filepath} as nan")
-                        return np.nan    
-                    return cell
-                except:
-                    logger.warning(f"could not process cell value '{cell}' in {filepath}, setting as nan")
-
-                    return np.nan
-            df.iloc[:, 1:] = df.iloc[:, 1:].map(convert_to_numeric)
-
-            df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
-            df.insert(loc=1, column='month', value=np.nan) # month column missing
-            df[['year', 'month']] = df['year'].str.split(expand=True) # currently year column is of the form "year month", need to split it
-            df['year'] = df['year'].astype(np.int64)
-            df['month'] = df['month'].map(lambda m: m[:3].lower()) # shorten month to 3 letters
-            df.insert(loc=0, column='cma_code', value=cma_code)
-            df['cma_code'] = df['cma_code'].astype(str)
-            df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
-            df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
-            return df
+        df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
+        df.insert(loc=1, column='month', value=np.nan) # month column missing
+        df[['year', 'month']] = df['year'].str.split(expand=True) # currently year column is of the form "year month", need to split it
+        df['year'] = df['year'].astype(np.int64)
+        df['month'] = df['month'].map(lambda m: m[:3].lower()) # shorten month to 3 letters
+        df.insert(loc=0, column='cma_code', value=cma_code)
+        df['cma_code'] = df['cma_code'].astype(str)
+        df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
+        df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
+        return df
 
 
 class Cleaner(BaseCleaner):
@@ -223,22 +179,22 @@ class Cleaner(BaseCleaner):
             self.sub_cat_type = sub_cat_type
 
     SCRAPE_TARGETS = [
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
+        # # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
@@ -249,7 +205,13 @@ class Cleaner(BaseCleaner):
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
         # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
-        # (CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'r
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'primary_rental', 'vacancy', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Availability Rate (%)', 'primary_rental', 'availability', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'primary_rental', 'rent-average', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, '% Change of Average Rent', 'primary_rental', 'percent-change', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Median Rent ($)', 'primary_rental', 'rent-median', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Rental Universe', 'primary_rental', 'universe', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Summary Statistics', 'primary_rental', 'summary', parser=YearMonthCsvParser())
     ]
 
 
@@ -526,9 +488,7 @@ class Cleaner(BaseCleaner):
                 
 # notes
 # look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
-# many of the downloaded files have different formats, will need to give each category it's own variable to hold csv parsing functions
 
 
 # ITEMS TO FIX
-# improve logic that detects rating columns that are just letters (a,b,c,d), in case of null values
 # fix title-removing logic that apparently skips the first record (see starts-saar) 
