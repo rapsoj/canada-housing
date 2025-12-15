@@ -3,6 +3,7 @@ from enum import StrEnum
 import io
 import logging
 import os
+from pathlib import Path
 import re
 import time
 import pandas as pd
@@ -419,11 +420,25 @@ class Cleaner(BaseCleaner):
             export_csv_xpath = '//a[@data-export-type="csv"]'
             export_csv_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_csv_xpath)))
             
+            # delete any old unfinished downloads
+            [f.unlink() for f in Path(download_dir).glob("*.crdownload")]
+
             # Click on the "Export to Spreadsheet (CSV)" option
             export_csv_option.click()
             
-            # Wait to ensure the export completes
-            time.sleep(5)
+            # Wait for the file to be fully downloaded by checking for incomplete downloads
+            FILE_DOWNLOAD_MAX_WAIT_TIME = 10
+            FILE_DOWNLOAD_CHECK_INTERVAL = 0.5
+            num_checks = 0
+            while True:
+                files = os.listdir(download_dir)
+                crdownload_files = [f for f in files if f.endswith('.crdownload')]
+                if not crdownload_files:
+                    break
+                if num_checks * FILE_DOWNLOAD_CHECK_INTERVAL >= FILE_DOWNLOAD_MAX_WAIT_TIME:
+                    raise ConnectionError("exceeded maximum wait time to download file")
+                num_checks += 1
+                time.sleep(FILE_DOWNLOAD_CHECK_INTERVAL)
             
             # Get the list of files in the download directory
             files = os.listdir(download_dir)
