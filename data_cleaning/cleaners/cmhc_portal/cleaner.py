@@ -167,7 +167,7 @@ class Cleaner(BaseCleaner):
 
     class ScrapeTarget:
         def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str, parser: CsvParser = None,
-                     historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling'):
+                     historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling', multipart_download = False):
             self.category_head = category_head
             self.category_name = category_name
             self.download_directory = download_directory
@@ -178,34 +178,35 @@ class Cleaner(BaseCleaner):
             self.historic = historic
             self.sub_categories = sub_categories
             self.sub_cat_type = sub_cat_type
+            self.multipart_download = multipart_download
 
     SCRAPE_TARGETS = [
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
-        # # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
-        # ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
+        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'primary_rental', 'vacancy', parser=YearMonthCsvParser()),
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Availability Rate (%)', 'primary_rental', 'availability', parser=YearMonthCsvParser()),
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'primary_rental', 'rent-average', parser=YearMonthCsvParser()),
@@ -331,6 +332,7 @@ class Cleaner(BaseCleaner):
         dataframes = []
         # Loop through sub-categories
         if len(scrape_target.sub_categories) > 0:
+            raise NotImplementedError("this flow is untested. Delete this line, but use with caution!")
             for cat in scrape_target.sub_categories:
             
                 # Wait for the dropdown to be clickable
@@ -419,39 +421,10 @@ class Cleaner(BaseCleaner):
             # Wait for the "Export to Spreadsheet (CSV)" option to be clickable
             export_csv_xpath = '//a[@data-export-type="csv"]'
             export_csv_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_csv_xpath)))
-            
-            # delete any old unfinished downloads
-            [f.unlink() for f in Path(download_dir).glob("*.crdownload")]
 
-            # Click on the "Export to Spreadsheet (CSV)" option
-            export_csv_option.click()
-            
-            # Wait for the file to be fully downloaded by checking for incomplete downloads
-            FILE_DOWNLOAD_MAX_WAIT_TIME = 10
-            FILE_DOWNLOAD_CHECK_INTERVAL = 0.5
-            num_checks = 0
-            while True:
-                files = os.listdir(download_dir)
-                crdownload_files = [f for f in files if f.endswith('.crdownload')]
-                if not crdownload_files:
-                    break
-                if num_checks * FILE_DOWNLOAD_CHECK_INTERVAL >= FILE_DOWNLOAD_MAX_WAIT_TIME:
-                    raise ConnectionError("exceeded maximum wait time to download file")
-                num_checks += 1
-                time.sleep(FILE_DOWNLOAD_CHECK_INTERVAL)
-            
-            # Get the list of files in the download directory
-            files = os.listdir(download_dir)
-            
-            # Filter out directories, if any
-            files = [file for file in files if os.path.isfile(os.path.join(download_dir, file))]
-            
-            # Sort files based on modification time (newest first)
-            sorted_files = sorted(files, key=lambda x: os.path.getmtime(os.path.join(download_dir, x)), reverse=True)
-            
-            # Assume at least one file is present
-            most_recent_filename = sorted_files[0]
-            
+            # Click on the "Export to Spreadsheet (CSV)" option and download the file
+            downloaded_file = self.download_file(download_dir, lambda: export_csv_option.click())
+
             # Specify the new filename
             if scrape_target.file_postfix != '':
                 new_filename = cma + ' - ' + ' - ' + scrape_target.file_postfix + '.csv'
@@ -459,7 +432,7 @@ class Cleaner(BaseCleaner):
                 new_filename = cma + ' - ' + '.csv'
             
             # Create the full paths for both the original and new filenames
-            original_filepath = os.path.join(download_dir, most_recent_filename)
+            original_filepath = os.path.join(download_dir, downloaded_file)
             new_filepath = os.path.join(download_dir, new_filename)
             
             # Rename the file
@@ -477,6 +450,38 @@ class Cleaner(BaseCleaner):
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
         return dataframes
 
+    # given func lambda that starts a download, wait until it's finished downloading and then return the filepath
+    def download_file(self, download_dir: str, func, *args, **kwargs) -> str:
+        # delete any old unfinished downloads
+        [f.unlink() for f in Path(download_dir).glob("*.crdownload")]
+
+        func(*args, **kwargs)
+
+        # Wait for the file to be fully downloaded by checking for incomplete downloads
+        FILE_DOWNLOAD_MAX_WAIT_TIME = 10
+        FILE_DOWNLOAD_CHECK_INTERVAL = 0.5
+        num_checks = 0
+        while True:
+            files = os.listdir(download_dir)
+            crdownload_files = [f for f in files if f.endswith('.crdownload')]
+            if not crdownload_files:
+                break
+            if num_checks * FILE_DOWNLOAD_CHECK_INTERVAL >= FILE_DOWNLOAD_MAX_WAIT_TIME:
+                raise ConnectionError("exceeded maximum wait time to download file")
+            num_checks += 1
+            time.sleep(FILE_DOWNLOAD_CHECK_INTERVAL)
+        
+        # Get the list of files in the download directory
+        files = os.listdir(download_dir)
+        
+        # Filter out directories, if any
+        files = [file for file in files if os.path.isfile(os.path.join(download_dir, file))]
+        
+        # Sort files based on modification time (newest first)
+        sorted_files = sorted(files, key=lambda x: os.path.getmtime(os.path.join(download_dir, x)), reverse=True)
+        
+        # Assume at least one file is present
+        return sorted_files[0]
 
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
         merged = dataframes[0]
@@ -503,7 +508,7 @@ class Cleaner(BaseCleaner):
                 
 # notes
 # look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
-
+# check if sub_categories needs to be defined for any items
 
 # ITEMS TO FIX
 # fix title-removing logic that apparently skips the first record (see starts-saar) 
