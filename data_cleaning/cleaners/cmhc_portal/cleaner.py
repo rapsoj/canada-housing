@@ -70,6 +70,7 @@ class DefaultCsvParser(CsvParser):
     def parse(self, filepath, cma_code, col_prefix, logger):
         df = self._parse_csv(filepath)
         df = self._convert_cells_to_numeric(df, logger)
+        df = self._remove_nan_or_rating_cols(df)
 
         df = df.rename(columns={df.columns[0]: 'year'}) # year column missing a name
         df.insert(loc=0, column='cma_code', value=cma_code)
@@ -125,7 +126,7 @@ class Cleaner(BaseCleaner):
     # 'Saguenay': '0180/3/Saguenay',
     # 'Drummondville': '0280/3/Drummondville',
 	# 'Oshawa': '1250/3/Oshawa',
-	# 'Toronto': '2270/3/Toronto',
+	'Toronto': '2270/3/Toronto',
 	# 'Hamilton': '0610/3/Hamilton',
 	# 'St. Catharines-Niagara': '1160/3/St.%20Catharines%20-%20Niagara',
 	# 'Kitchener-Cambridge-Waterloo': '0850/3/Kitchener%20-%20Cambridge%20-%20Waterloo',
@@ -156,7 +157,7 @@ class Cleaner(BaseCleaner):
     # 'Chilliwack': '0210/3/Chilliwack',
 	# 'Saint John': '1600/3/Saint%20John',
 	# 'Fredericton': '0370/3/Fredericton',
-	'Moncton': '1040/3/Moncton'
+	# 'Moncton': '1040/3/Moncton'
 	}
 
     class CategoryHead(StrEnum):
@@ -167,7 +168,8 @@ class Cleaner(BaseCleaner):
 
     class ScrapeTarget:
         def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str, parser: CsvParser = None,
-                     historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling', multipart_download = False):
+                     historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling', multipart_download = False,
+                     category_index = 1):
             self.category_head = category_head
             self.category_name = category_name
             self.download_directory = download_directory
@@ -179,6 +181,7 @@ class Cleaner(BaseCleaner):
             self.sub_categories = sub_categories
             self.sub_cat_type = sub_cat_type
             self.multipart_download = multipart_download
+            self.category_index = category_index # in case the category_name appears more than once under the category_head drop down
 
     SCRAPE_TARGETS = [
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
@@ -190,13 +193,13 @@ class Cleaner(BaseCleaner):
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', ''),
-        # ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', 'shelter-costs'),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', ''),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', 'period-construction'),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
@@ -213,7 +216,14 @@ class Cleaner(BaseCleaner):
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, '% Change of Average Rent', 'primary_rental', 'percent-change', parser=YearMonthCsvParser()),
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Median Rent ($)', 'primary_rental', 'rent-median', parser=YearMonthCsvParser()),
         ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Rental Universe', 'primary_rental', 'universe', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Summary Statistics', 'primary_rental', 'summary', parser=YearMonthCsvParser())
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Summary Statistics', 'primary_rental', 'summary', parser=YearMonthCsvParser()),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Households', 'secondary_rental', 'estimated_households', historic=False),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_other_dwellings', historic=False, category_index=1),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'secondary_rental', 'vacancy_rate', historic=False),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_condominium_apartments', historic=False, category_index=2),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units', 'secondary_rental', 'estimated_condos', historic=False),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units used for Rental', 'secondary_rental', 'estimated_condos_rentals', historic=False),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Percentage (%) of All Condominiums used for Rental', 'secondary_rental', 'percent_estimated_condos_rent', historic=False),
     ]
 
 
@@ -274,7 +284,7 @@ class Cleaner(BaseCleaner):
         existing_filename = os.path.join(download_dir, existing_filename)
         if os.path.exists(existing_filename):
             self.logger.info(f"using cached '{existing_filename}'")
-            return [scrape_target.parser.parse(existing_filename, cma_code, scrape_target.category_name, self.logger)]
+            return [scrape_target.parser.parse(existing_filename, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger)]
         
 
         chrome_options = Options()
@@ -309,8 +319,7 @@ class Cleaner(BaseCleaner):
         dropdown.click()
         
         # Wait for metric link to be clickable
-        link_xpath = '//a[text()="' + scrape_target.category_name + '"]'
-        #link_xpath = "//a[text()='Average Rent ($)'][contains(@href, 'categoryLevel2=Rental%20Condominium%20Apartments')]"
+        link_xpath = f'//a[text()="{scrape_target.category_head}"]/following::a[text()="{scrape_target.category_name}"][{scrape_target.category_index}]'
         link = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, link_xpath)))
         
         # Click on the metric link
@@ -410,20 +419,8 @@ class Cleaner(BaseCleaner):
     
         # Proceed if no subcategories are present
         else:
-    
-            # Wait for the "Export" button to be clickable
-            export_button_xpath = '//a[@id="exportTableLink" and contains(@class, "button secondary")]'
-            export_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_button_xpath)))
-            
-            # Click on the "Export" button
-            export_button.click()
-            
-            # Wait for the "Export to Spreadsheet (CSV)" option to be clickable
-            export_csv_xpath = '//a[@data-export-type="csv"]'
-            export_csv_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_csv_xpath)))
-
             # Click on the "Export to Spreadsheet (CSV)" option and download the file
-            downloaded_file = self.download_file(download_dir, lambda: export_csv_option.click())
+            downloaded_file = self.download_file(download_dir, lambda: self.select_download(driver))
 
             # Specify the new filename
             if scrape_target.file_postfix != '':
@@ -444,8 +441,8 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            dataframes.append(scrape_target.parser.parse(new_filepath, cma_code, scrape_target.category_name, self.logger))
-        
+            dataframes.append(scrape_target.parser.parse(new_filepath, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger))
+    
         self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
         return dataframes
@@ -482,6 +479,21 @@ class Cleaner(BaseCleaner):
         
         # Assume at least one file is present
         return sorted_files[0]
+    
+    def select_download(self, driver: any):
+        # Wait for the "Export" button to be clickable
+        export_button_xpath = '//a[@id="exportTableLink" and contains(@class, "button secondary")]'
+        export_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_button_xpath)))
+        
+        # Click on the "Export" button
+        export_button.click()
+        
+        # Wait for the "Export to Spreadsheet (CSV)" option to be clickable
+        export_csv_xpath = '//a[@data-export-type="csv"]'
+        export_csv_option = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, export_csv_xpath)))
+
+        # download the file
+        export_csv_option.click()
 
     def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
         merged = dataframes[0]
@@ -512,3 +524,4 @@ class Cleaner(BaseCleaner):
 
 # ITEMS TO FIX
 # fix title-removing logic that apparently skips the first record (see starts-saar) 
+# that 'list index out of range' error that inconsistently pops up
