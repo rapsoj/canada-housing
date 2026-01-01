@@ -169,7 +169,7 @@ class Cleaner(BaseCleaner):
     class ScrapeTarget:
         def __init__(self, category_head: str, category_name: str, download_directory: str, file_postfix: str, parser: CsvParser = None,
                      historic: bool = True, sub_categories: list[str] = [], sub_cat_type: str = 'dwelling', multipart_download = False,
-                     category_index = 1):
+                     category_index = 1, expected_columns = -1):
             self.category_head = category_head
             self.category_name = category_name
             self.download_directory = download_directory
@@ -182,48 +182,50 @@ class Cleaner(BaseCleaner):
             self.sub_cat_type = sub_cat_type
             self.multipart_download = multipart_download
             self.category_index = category_index # in case the category_name appears more than once under the category_head drop down
+            self.expected_columns = expected_columns # after parsing, assert this value is true
+
 
     SCRAPE_TARGETS = [
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', 'shelter-costs'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value'),
-        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', 'period-construction'),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'primary_rental', 'vacancy', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Availability Rate (%)', 'primary_rental', 'availability', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'primary_rental', 'rent-average', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, '% Change of Average Rent', 'primary_rental', 'percent-change', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Median Rent ($)', 'primary_rental', 'rent-median', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Rental Universe', 'primary_rental', 'universe', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Summary Statistics', 'primary_rental', 'summary', parser=YearMonthCsvParser()),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Households', 'secondary_rental', 'estimated_households', historic=False),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_other_dwellings', historic=False, category_index=1),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'secondary_rental', 'vacancy_rate', historic=False),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_condominium_apartments', historic=False, category_index=2),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units', 'secondary_rental', 'estimated_condos', historic=False),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units used for Rental', 'secondary_rental', 'estimated_condos_rentals', historic=False),
-        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Percentage (%) of All Condominiums used for Rental', 'secondary_rental', 'percent_estimated_condos_rent', historic=False),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Age of Primary Household Maintainer', 'household', 'age', expected_columns=9),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mobility of Primary Household Maintainer', 'household', 'mobility', expected_columns=9),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Type', 'household', 'type', expected_columns=9),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Size', 'household', 'size', expected_columns=8),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Immigrant Households', 'household', 'immigrant', expected_columns=7),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Seniors', 'household', 'senior', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Households with Children Under 18', 'household', 'children', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Activity Limitations', 'household', 'activity-limits', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Aboriginal Households', 'household', 'aboriginal', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Shelter Costs', 'shelter', 'shelter-costs', expected_columns=8),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Mortgages', 'household', 'mortgage', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Household Income', 'household', 'income', expected_columns=9),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Condominiums', 'household', 'condominium', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Housing Suitability', 'household', 'suitability', expected_columns=5),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value', expected_columns=10),
+        ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', 'period-construction', expected_columns=6),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False, expected_columns=4),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Units (Homeowner + Condo)', 'new_construction', 'absorbed', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, '% of Absorbed Units at Completion (Homeowner + Condo)', 'new_construction', 'absorbed-percent', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Inventory of Completed and Unabsorbed Units (Homeowner + Condo)', 'new_construction', 'inventory-completed-unabsorbed', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Absorbed Unit Prices ($)', 'new_construction', 'prices-absorbed', parser=YearMonthCsvParser(), expected_columns=10),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Unabsorbed Unit Prices ($)', 'new_construction', 'prices-unabsorbed', parser=YearMonthCsvParser(), expected_columns=10),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'primary_rental', 'vacancy', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Availability Rate (%)', 'primary_rental', 'availability', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Average Rent ($)', 'primary_rental', 'rent-average', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, '% Change of Average Rent', 'primary_rental', 'percent-change', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Median Rent ($)', 'primary_rental', 'rent-median', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Rental Universe', 'primary_rental', 'universe', parser=YearMonthCsvParser(), expected_columns=8),
+        ScrapeTarget(CategoryHead.PRIMARY_RENTAL_MARKET, 'Summary Statistics', 'primary_rental', 'summary', parser=YearMonthCsvParser(), expected_columns=9),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Households', 'secondary_rental', 'estimated_households', historic=False, expected_columns=6),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_other_dwellings', historic=False, category_index=1, expected_columns=6),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Vacancy Rate (%)', 'secondary_rental', 'vacancy_rate', historic=False, expected_columns=7),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Average Rent ($)', 'secondary_rental', 'average_rent_condominium_apartments', historic=False, category_index=2, expected_columns=7),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units', 'secondary_rental', 'estimated_condos', historic=False, expected_columns=7),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Estimated Number of Condominium Units used for Rental', 'secondary_rental', 'estimated_condos_rentals', historic=False, expected_columns=7),
+        ScrapeTarget(CategoryHead.SECONDARY_RENTAL_MARKET, 'Percentage (%) of All Condominiums used for Rental', 'secondary_rental', 'percent_estimated_condos_rent', historic=False, expected_columns=7),
     ]
 
 
@@ -284,7 +286,12 @@ class Cleaner(BaseCleaner):
         existing_filename = os.path.join(download_dir, existing_filename)
         if os.path.exists(existing_filename):
             self.logger.info(f"using cached '{existing_filename}'")
-            return [scrape_target.parser.parse(existing_filename, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger)]
+
+            dataframe = scrape_target.parser.parse(existing_filename, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger)
+            if scrape_target.expected_columns != -1 and scrape_target.expected_columns != len(dataframe.columns):
+                raise AssertionError(f"expected {scrape_target.expected_columns} columns for '{scrape_target.category_name}' scrape target but there were {len(dataframe.columns)}")
+            
+            return [dataframe]
         
 
         chrome_options = Options()
@@ -441,7 +448,11 @@ class Cleaner(BaseCleaner):
             # Close the browser window
             driver.quit()
 
-            dataframes.append(scrape_target.parser.parse(new_filepath, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger))
+            dataframe = scrape_target.parser.parse(new_filepath, cma_code, scrape_target.download_directory + '_' + scrape_target.file_postfix, self.logger)
+            if scrape_target.expected_columns != -1 and scrape_target.expected_columns != len(dataframe.columns):
+                raise AssertionError(f"expected {scrape_target.expected_columns} columns for '{scrape_target.category_name}' scrape target but there were {len(dataframe.columns)}")
+
+            dataframes.append(dataframe)
     
         self.logger.debug(f"obtained {dataframes} dataframes from cma {cma}: {cma_code}")
         self.logger.info(f"obtained {len(dataframes)} dataframes from cma {cma}: {cma_code}")
