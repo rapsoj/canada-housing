@@ -34,6 +34,7 @@ class CsvParser(ABC):
                 for i, line in enumerate(lines):
                     if line == '\n':
                         lines = lines[:i]
+                        break
                 
                 df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
                 return df.iloc[:, :-1] # excess empty column
@@ -112,6 +113,23 @@ class YearMonthCsvParser(CsvParser):
         df.columns = list(df.columns[:3]) + [col_prefix + '  ' + col for col in df.columns[3:]] # prefix all columns except year and cma_code
         df = df.rename(columns=lambda col: re.sub(r'[^a-zA-Z0-9]', '_', col)) # replace special characters with underscores in column names
         return df
+    
+class StartsSaarParser(YearMonthCsvParser):
+    # the starts (SAAR) scrape target's downloaded file, unlike other targets, does not have the csv header line so we have to add one
+    def _parse_csv(self, filepath: str) -> pd.DataFrame:
+            with open(filepath, 'r', errors='replace') as file:
+                lines = file.readlines()
+                # remove first 2 lines, and then all the lines after the empty line
+                lines = lines[2:]
+                lines = [',Starts,\n'] + lines # add our starts (saar) header
+                for i, line in enumerate(lines):
+                    if line == '\n':
+                        lines = lines[:i]
+                        break
+                
+                df = pd.read_csv(io.StringIO(''.join(lines)), thousands=',')
+                return df.iloc[:, :-1] # excess empty column
+        
 
 
 class Cleaner(BaseCleaner):
@@ -203,7 +221,7 @@ class Cleaner(BaseCleaner):
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Value of Owner-occupied Dwellings ($)', 'household', 'value', expected_columns=10),
         ScrapeTarget(CategoryHead.HOUSING_STOCK, 'Period of Construction and Condition of Dwelling', 'condition', 'period-construction', expected_columns=6),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (Actual)', 'new_construction', 'starts-actual', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
-        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=YearMonthCsvParser(), historic=False, expected_columns=4),
+        ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Starts (SAAR)', 'new_construction', 'starts-saar', parser=StartsSaarParser(), historic=False, expected_columns=4),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Completions', 'new_construction', 'completions', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Under Construction Inventory', 'new_construction', 'inventory-construction', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
         ScrapeTarget(CategoryHead.NEW_CONSTRUCTION, 'Length of Construction (in months)', 'new_construction', 'length-construction', parser=AbbreviatedMonthYearCsvParser(), expected_columns=8),
@@ -528,11 +546,6 @@ class Cleaner(BaseCleaner):
                 else:
                     self.logger.error("Max retries reached. Raising exception.")
                     raise e
-                
-# notes
-# look at primary rental market and secondary rental market categories, maybe they need new csv reading functions too
-# check if sub_categories needs to be defined for any items
 
 # ITEMS TO FIX
-# fix title-removing logic that apparently skips the first record (see starts-saar) 
 # that 'list index out of range' error that inconsistently pops up
