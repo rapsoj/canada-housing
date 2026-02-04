@@ -10,7 +10,6 @@ import pandas as pd
 import logging
 import traceback
 from typing import Optional, Dict, Any
-import os
 
 # Import the test runner
 from tests.test_runner import TestRunner
@@ -120,7 +119,7 @@ class DataCleaningPipeline:
 
     def run(self, use_disk: bool = False,
             output_dir: Optional[Path] = None,
-            skip_tests: bool = False) -> Optional[pd.DataFrame]:
+            skip_tests: bool = False) -> Optional[list[pd.DataFrame]]:
         try:
             cleaner = self.cleaner_class()
 
@@ -133,77 +132,92 @@ class DataCleaningPipeline:
 
             if isinstance(data_ref, Path):
                 self.logger.info(f"Downloaded data to disk: {data_ref}")
-            elif isinstance(data_ref, (pd.DataFrame, np.ndarray)):
+            elif isinstance(data_ref, list) and all([isinstance(dr, (pd.DataFrame, np.ndarray)) for dr in data_ref]):
                 self.logger.info("Downloaded data to memory")
             else:
-                raise TypeError("download_data() must return a DataFrame, ndarray, or Path")
+                raise TypeError("download_data() must return a Path or a list of dataframes and ndarrays")
 
             # Clean data
             self.logger.info("Cleaning data...")
-            cleaned_df = cleaner.clean_data(data_ref)
+            cleaned_dfs = cleaner.clean_data(data_ref)
 
-            if not isinstance(cleaned_df, (pd.DataFrame, np.ndarray)):
-                raise TypeError("clean_data() must return a DataFrame or ndarray")
+            if not (isinstance(cleaned_dfs, list) and all([isinstance(df, (pd.DataFrame, np.ndarray)) for df in cleaned_dfs])):
+                raise TypeError("clean_data() must return a list of DataFrames and ndarrays")
 
-            if isinstance(cleaned_df, np.ndarray):
-                cleaned_df = pd.DataFrame(cleaned_df)
+            cleaned_dfs = [pd.DataFrame(df) if isinstance(df, np.ndarray) else df for df in cleaned_dfs]
 
-            self.logger.info(f"Cleaned {len(cleaned_df)} records with {len(cleaned_df.columns)} columns")
+            self.logger.info(f"Cleaned {sum([len(df) for df in cleaned_dfs])} records with {sum([len(df.columns) for df in cleaned_dfs])} columns")
 
             # Optional validation
             if hasattr(cleaner, 'validate_output'):
                 self.logger.info("Running custom validation...")
-                if not cleaner.validate_output(cleaned_df):
-                    self.logger.error("Custom validation failed")
-                    return None
+                for cleaned_df in cleaned_dfs:
+                    if not cleaner.validate_output(cleaned_df):
+                        self.logger.error("Custom validation failed")
+                        return None
 
             # Test suite
             if not skip_tests:
                 self.logger.info("Running validation tests...")
-                test_results = self.test_runner.run_tests(cleaned_df)
+                for i, df in enumerate(cleaned_dfs):
+                    test_results = self.test_runner.run_tests(df)
 
-                if not test_results['passed']:
-                    self.logger.error(
-                        f"\nValidation tests failed:\n"
-                        f"  Passed: {test_results['passed_tests']}/{test_results['total_tests']}"
-                    )
-                    for test_name, result in test_results['test_details'].items():
-                        if not result['passed']:
-                            self.logger.error(f"    ✗ {test_name}: {result['message']}")
-                    return None
-                else:
-                    self.logger.info(
-                        f"All tests passed! ({test_results['passed_tests']}/{test_results['total_tests']})"
-                    )
+                    if not test_results['passed']:
+                        self.logger.error(
+                            f"\nValidation tests for dataframe {i + 1}/{len(cleaned_dfs)} failed:\n"
+                            f"  Passed: {test_results['passed_tests']}/{test_results['total_tests']}"
+                        )
+                        for test_name, result in test_results['test_details'].items():
+                            if not result['passed']:
+                                self.logger.error(f"    ✗ {test_name}: {result['message']}")
+                        return None
+                    else:
+                        self.logger.info(
+                            f"All tests for dataframe {i + 1}/{len(cleaned_dfs)} passed! ({test_results['passed_tests']}/{test_results['total_tests']})"
+                        )
 
             # Save cleaned data
             if output_dir is None:
                 output_dir = Path("data/cleaned") / self.cleaner_name
+            
+            if len(cleaned_dfs) == 1:
+                output_path = output_dir / "cleaned_data.csv"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            output_path = output_dir / "cleaned_data.csv"
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+                cleaned_dfs[0].to_csv(output_path, index=False)
+                self.logger.info(f"\nSaved cleaned data to: {output_path}")
+                self.logger.info(f"Shape: {cleaned_dfs[0].shape}")
+            elif len(cleaned_dfs) > 1:
+                for i, df in enumerate(cleaned_dfs):
+                    output_path = output_dir / f"cleaned_data-{i}.csv"
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            cleaned_df.to_csv(output_path, index=False)
-            self.logger.info(f"\nSaved cleaned data to: {output_path}")
-            self.logger.info(f"Shape: {cleaned_df.shape}")
-
-            return cleaned_df
+                    df.to_csv(output_path, index=False)
+                    self.logger.info(f"\nSaved cleaned data {i + 1}/{len(cleaned_dfs)} to: {output_path}")
+                    self.logger.info(f"Shape: {df.shape}")
+            else:
+                self.logger.warning("there are no dataframes to save")
+            
+            return cleaned_dfs
 
         except Exception as e:
             self.logger.error(f"Error running cleaner: {e}")
             self.logger.error(traceback.format_exc())
             return None
 
-    def test(self) -> Dict[str, Any]:
+    def test(self) -> list[Dict[str, Any]]:
         """Run the cleaner and report test results"""
         try:
             # Run the cleaner with skip_tests=True to avoid double testing
-            df = self.run(skip_tests=True)
-            if df is None:
+            dfs = self.run(skip_tests=True)
+            if dfs is None:
                 return {"execution": False, "error": "Cleaner failed to run"}
 
             # Run full test suite
-            test_results = self.test_runner.run_tests(df)
+            test_results = []
+            for i, df in dfs:
+                self.logger.info(f"running tests for dataframe {i + 1}/{len(dfs)}")
+                test_results.append(self.test_runner.run_tests(df))
 
             return test_results
 
@@ -355,26 +369,29 @@ Examples:
     elif args.test:
         print(f"\nTesting '{args.cleaner_name}' cleaner...")
         results = pipeline.test()
+        failed = False
+        for i, result in enumerate(results):
+            if result.get('passed') is not None:
+                print(f"\nTest Results for dataframe {i}/{len(results)}:")
+                print(f"  Total tests: {result['total_tests']}")
+                print(f"  Passed: {result['passed_tests']}")
+                print(f"  Failed: {result['failed_tests']}")
 
-        if results.get('passed') is not None:
-            print(f"\nTest Results:")
-            print(f"  Total tests: {results['total_tests']}")
-            print(f"  Passed: {results['passed_tests']}")
-            print(f"  Failed: {results['failed_tests']}")
+                if result['test_details']:
+                    print("\nDetailed Results:")
+                    for test_name, r in result['test_details'].items():
+                        status = '✓' if r['passed'] else '✗'
+                        print(f"  {status} {test_name}: {r['message']}")
 
-            if results['test_details']:
-                print("\nDetailed Results:")
-                for test_name, result in results['test_details'].items():
-                    status = '✓' if result['passed'] else '✗'
-                    print(f"  {status} {test_name}: {result['message']}")
-
-            if not results['passed']:
-                print("\nTests FAILED - data may not meet quality standards")
-                sys.exit(1)
+                if not result['passed']:
+                    failed = True
+                else:
+                    print("\nAll tests PASSED! ✨")
             else:
-                print("\nAll tests PASSED! ✨")
-        else:
-            print(f"Failed to run tests: {results.get('error', 'Unknown error')}")
+                print(f"Failed to run tests: {results.get('error', 'Unknown error')}")
+                sys.exit(1)
+        if not failed:
+            print("\nTests FAILED - data may not meet quality standards")
             sys.exit(1)
 
     else:

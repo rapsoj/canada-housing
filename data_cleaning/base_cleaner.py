@@ -41,7 +41,7 @@ class BaseCleaner(ABC):
         pass
 
     @abstractmethod
-    def download_data(self, format: Literal['dataframe', 'array'] = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
+    def download_data(self, format: Literal['dataframe', 'array'] = 'dataframe') -> list[Union[pd.DataFrame, np.ndarray]]:
         """
         Download raw data in the desired format.
 
@@ -54,7 +54,7 @@ class BaseCleaner(ABC):
         pass
 
     @abstractmethod
-    def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
+    def clean_data(self, raw_data: list[Union[pd.DataFrame, np.ndarray]]) -> list[Union[pd.DataFrame, np.ndarray]]:
         """
         Clean raw data, which may be either a DataFrame or a NumPy array.
 
@@ -100,7 +100,7 @@ class BaseCleaner(ABC):
             Cleaned data (assumed to be a DataFrame here)
         """
         df = pd.read_csv(data_path)
-        cleaned = self.clean_data(df)
+        cleaned = self.clean_data([df])
         if isinstance(cleaned, pd.DataFrame):
             return cleaned
         else:

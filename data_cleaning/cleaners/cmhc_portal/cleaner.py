@@ -256,7 +256,7 @@ class Cleaner(BaseCleaner):
         }
         
 
-    def download_data(self, format: str = 'dataframe') -> Union[pd.DataFrame, np.ndarray]:
+    def download_data(self, format: str = 'dataframe') -> list[Union[pd.DataFrame, np.ndarray]]:
         if format not in ['dataframe', 'array']:
             raise ValueError(f'{format} is not a valid value for format parameter')
 
@@ -273,7 +273,7 @@ class Cleaner(BaseCleaner):
         if format == 'dataframe':
             return merged_dataframes
         else:
-            return merged_dataframes.to_numpy()
+            return [df.to_numpy() for df in merged_dataframes]
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
@@ -524,15 +524,30 @@ class Cleaner(BaseCleaner):
         # download the file
         export_csv_option.click()
 
-    def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> pd.DataFrame:
-        merged = dataframes[0]
-        for dataframe in dataframes[1:]:
-            merged = pd.merge(merged, dataframe, on=['year', 'cma_code'])
+    def merge_dataframes(self, dataframes: list[pd.DataFrame]) -> list[pd.DataFrame]:
+        # split into 2 groups, one with month column and one without it
+        with_month, without_month = [], []
+        for dataframe in dataframes:
+            with_month.append(dataframe) if 'month' in dataframe else without_month.append(dataframe)
 
-        merged['month'] = merged['month'].astype(str)
-        merged['year'] = merged['year'].astype(np.int64)
-        merged.sort_values(by=['cma_code', 'year'], inplace=True)
-        return merged
+        with_month_merged = with_month[0]
+        for dataframe in with_month[1:]:
+            with_month_merged = pd.merge(with_month_merged, dataframe, on=['year', 'month', 'cma_code'])
+        with_month_merged['cma_code'] = with_month_merged['cma_code'].astype(str)
+        with_month_merged['year'] = with_month_merged['year'].astype(np.int64)
+        with_month_merged['month'] = with_month_merged['month'].astype(str)
+        with_month_merged.iloc[:, 3:] = with_month_merged.iloc[:, 3:].astype(str)
+        with_month_merged.sort_values(by=['cma_code', 'month', 'year'])
+
+        without_month_merged = without_month[0]
+        for dataframe in without_month[1:]:
+            without_month_merged = pd.merge(without_month_merged, dataframe, on=['year', 'cma_code'])
+        without_month_merged['cma_code'] = without_month_merged['cma_code'].astype(str)
+        without_month_merged['year'] = without_month_merged['year'].astype(np.int64)
+        without_month_merged.sort_values(by=['cma_code', 'year'])
+        without_month_merged.iloc[:, 2:] = without_month_merged.iloc[:, 2:].astype(str)
+
+        return [with_month_merged, without_month_merged]
 
     # to handle network issues with selenium and the CHMC portal
     def retry_func(self, func, *args, **kwargs):
