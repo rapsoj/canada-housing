@@ -184,7 +184,7 @@ class DataCleaningPipeline:
                 output_path = output_dir / "cleaned_data.csv"
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                cleaned_dfs[0].to_csv(output_path, index=False)
+                cleaned_dfs[0].to_csv(output_path, index=False, encoding="utf-8-sig")
                 self.logger.info(f"\nSaved cleaned data to: {output_path}")
                 self.logger.info(f"Shape: {cleaned_dfs[0].shape}")
             elif len(cleaned_dfs) > 1:
