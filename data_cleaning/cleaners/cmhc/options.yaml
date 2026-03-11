@@ -1,0 +1,74 @@
+Scss:
+  Starts:
+    - Dwelling Type
+  Completions:
+    - Dwelling Type
+  Under Construction:
+    - Dwelling Type
+  Length of Construction:
+    - Dwelling Type
+  Absorbed Units:
+    - Dwelling Type
+  Share absorbed at completion:
+    - Dwelling Type
+  Unabsorbed Inventory:
+    - Dwelling Type
+
+Rms:
+  Vacancy Rate:
+    - Bedroom Type
+  Availability Rate:
+    - Bedroom Type
+  Average Rent:
+    - Bedroom Type
+  Average Rent Change:
+    - Bedroom Type
+  Median Rent:
+    - Bedroom Type
+  Rental Universe:
+    - Bedroom Type
+  Summary Statistics:
+    - null
+
+Srms:
+  Condo Vacancy Rate:
+    - Structure Size
+  Condo Average Rent:
+    - Bedroom Type
+  Condo Universe:
+    - Structure Size
+  Rental Condo Universe:
+    - Structure Size
+  Percentage Condo used as Rental:
+    - Structure Size
+  Other Seconary Rental Universe:
+    - Dwelling Type
+  Other Seconary Rental Average Rent:
+    - Other Seconary Rental Average Rent
+
+Census:
+  Income:
+    - Average and Median
+  Dwelling value:
+    - Average
+    - Median
+  All Households:
+    - Age of Population
+    - Age of Primary Household Maintainer
+  65 and over:
+    - Age of Population
+    - Age of Primary Household Maintainer
+  Mobility 5 of All Households:
+    - Age of Primary Household Maintainer
+  Mobility 5 of 65 and over:
+    - Age of Primary Household Maintainer
+  Mobility 1 of All Households:
+    - Age of Primary Household Maintainer
+  Mobility 1 of 65 and over:
+    - Age of Primary Household Maintainer
+
+Core Housing Need:
+  Housing Standards:
+    - "% of Households in Core Housing Need"
+    - Households in Core Housing Need
+    - Households Tested For Core Housing Need

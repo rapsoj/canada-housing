@@ -1,0 +1,8 @@
+paths:
+  uid_csv: data/raw/cmhc_cma_geo_uids.csv
+  options_yaml: options.yaml
+  raw_base: data/raw/cmhc
+  processed_dir: data/processed
+
+r:
+  breakdown: Historical Time Periods
