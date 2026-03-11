@@ -1,4 +1,5 @@
 pandas
+geopandas
 PyYAML
 numpy
 rasterio
