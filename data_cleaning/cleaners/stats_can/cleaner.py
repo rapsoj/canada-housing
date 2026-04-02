@@ -28,33 +28,61 @@ class Cleaner(BaseCleaner):
             'type': 'Survey'
         }
 
+
     def download_data(self, format: str = "dataframe"):
-        url = "https://www150.statcan.gc.ca/n1/tbl/csv/18100205-eng.zip"
-        target_dir = Path("data/raw/stats_can")
-        target_dir.mkdir(parents=True, exist_ok=True)
+        datasets = {
+            "housing_price": {
+                "url": "https://www150.statcan.gc.ca/n1/tbl/csv/18100205-eng.zip",
+                "csv": "18100205.csv"
+            },
+            "multiple_property": {
+                "url": "https://www150.statcan.gc.ca/n1/tbl/csv/46100038-eng.zip",
+                "csv": "46100038.csv"
+            },
+            "population": {
+                "url": "https://www150.statcan.gc.ca/n1/tbl/csv/17100148-eng.zip",
+                "csv": "17100148.csv"
+            },
+            "construction_investment": {
+                "url": "https://www150.statcan.gc.ca/n1/tbl/csv/34100286-eng.zip",
+                "csv": "34100286.csv"
+            }
+        }
 
-        csv_path = target_dir / "18100205.csv"
+        base_dir = Path("data/raw/stats_can")
 
-        # Skip download if file already exists
-        if csv_path.exists():
-            self.logger.info(f"File already exists at {csv_path}, skipping download")
-            return csv_path
+        downloaded_paths = {}
 
-        self.logger.info(f"Downloading from {url}")
+        for name, info in datasets.items():
+            target_dir = base_dir / name
+            target_dir.mkdir(parents=True, exist_ok=True)
 
-        response = requests.get(url, timeout=60)
-        response.raise_for_status()
+            csv_path = target_dir / info["csv"]
 
-        zip_path = target_dir / "18100205-eng.zip"
-        with open(zip_path, "wb") as f:
-            f.write(response.content)
+            # Skip if already exists
+            if csv_path.exists():
+                self.logger.info(f"{name}: file exists, skipping")
+                downloaded_paths[name] = csv_path
+                continue
 
-        with zipfile.ZipFile(zip_path, "r") as z:
-            z.extractall(target_dir)
+            self.logger.info(f"{name}: downloading from {info['url']}")
 
-        self.logger.info(f"Downloaded and extracted to {csv_path}")
+            response = requests.get(info["url"], timeout=60)
+            response.raise_for_status()
 
-        return csv_path
+            zip_path = target_dir / f"{name}.zip"
+
+            with open(zip_path, "wb") as f:
+                f.write(response.content)
+
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(target_dir)
+
+            self.logger.info(f"{name}: extracted to {csv_path}")
+
+            downloaded_paths[name] = csv_path
+
+        return base_dir
 
 
     def clean_data(self, raw_data: Union[pd.DataFrame, np.ndarray]) -> Union[pd.DataFrame, np.ndarray]:
