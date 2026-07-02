@@ -1,0 +1,8 @@
+pandas
+geopandas
+PyYAML
+numpy
+rasterio
+scipy
+selenium
+webdriver-manager

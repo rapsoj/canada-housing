@@ -1,0 +1,12 @@
+Guelph — Historical Average Value of Owner-occupied Dwellings ($)  
+2006 to 2016
+,Single-Detached,Semi-Detached,Row,Duplex,Low-Rise Apt.,High-Rise Apt.,Other,Total,
+2006,"302,696","214,147","201,921","291,933","208,827","172,604","391,382","282,392",
+2011,"378,580","270,488","247,165","341,055","238,556","210,638","183,201","348,718",
+2016,"508,323","327,132","354,167","471,877","287,618","258,139","184,661","463,729",
+
+Notes
+"Other dwellings comprise other single-attached houses, mobile homes, and other movable dwellings."
+Low-rise refers to apartments in buildings with fewer than 5 storeys
+High-rise refers to apartments in buildings with 5 or more storeys
+Source,"CMHC, adapted from Statistics Canada (Census of Canada and National Household Survey)"

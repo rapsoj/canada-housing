@@ -1,0 +1,12 @@
+Halifax — Historical Average Value of Owner-occupied Dwellings ($)  
+2006 to 2016
+,Single-Detached,Semi-Detached,Row,Duplex,Low-Rise Apt.,High-Rise Apt.,Other,Total,
+2006,"224,335","158,504","189,104","251,898","207,891","238,303","59,639","212,937",
+2011,"286,316","193,316","226,857","320,971","257,910","268,025","76,099","268,607",
+2016,"326,325","271,724","223,800","350,848","302,584","325,736","96,717","307,526",
+
+Notes
+"Other dwellings comprise other single-attached houses, mobile homes, and other movable dwellings."
+Low-rise refers to apartments in buildings with fewer than 5 storeys
+High-rise refers to apartments in buildings with 5 or more storeys
+Source,"CMHC, adapted from Statistics Canada (Census of Canada and National Household Survey)"

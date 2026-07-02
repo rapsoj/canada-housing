@@ -1,0 +1,12 @@
+Windsor — Historical Average Value of Owner-occupied Dwellings ($)  
+2006 to 2016
+,Single-Detached,Semi-Detached,Row,Duplex,Low-Rise Apt.,High-Rise Apt.,Other,Total,
+2006,"210,037","165,586","166,322","142,426","146,302","157,057","200,762","203,133",
+2011,"205,487","165,974","165,127","138,069","133,129","141,349","219,758","199,090",
+2016,"254,965","200,309","198,420","193,717","194,106","174,420","106,195","246,465",
+
+Notes
+"Other dwellings comprise other single-attached houses, mobile homes, and other movable dwellings."
+Low-rise refers to apartments in buildings with fewer than 5 storeys
+High-rise refers to apartments in buildings with 5 or more storeys
+Source,"CMHC, adapted from Statistics Canada (Census of Canada and National Household Survey)"

@@ -1,0 +1,15 @@
+Guelph — Median Rent by Bedroom Type by Zone
+October 2023 Row / Apartment
+,Bachelor,,1 Bedroom,,2 Bedroom,,3 Bedroom +,,Total,,
+West,**,,"1,600",a ,"1,686",a ,"2,695",d ,"1,641",a ,
+South,**,,"1,457",a ,"1,610",a ,"1,663",b ,"1,590",a ,
+East,**,,"1,373",b ,"1,500",b ,**,,"1,426",b ,
+Guelph/Eramosa and Puslinch,**,,**,,**,,**,,**,,
+Guelph,"1,070",d ,"1,508",a ,"1,610",a ,"1,701",c ,"1,595",a ,
+
+Notes
+"The following letter codes are used to indicate the reliability of the estimates: a — Excellent, b — Very good, c — Good, d — Poor (Use with Caution))"
+** — Data suppressed to protect confidentiality or data not statistically reliable
+++ — Change in rent is not statistically significant. This means that the change in rent is not statistically different than zero (0). (Applies only to % Change of Average Rent Tables).
+"CMA, CA and CSD definitions are based on 2021 Census Geography Definitions"
+Source,CMHC Rental Market Survey

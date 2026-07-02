@@ -1,0 +1,35 @@
+London — Historical Median Rent by Bedroom Type  
+1998 to 2023 Row / Apartment October
+,Bachelor,,1 Bedroom,,2 Bedroom,,3 Bedroom +,,Total,,
+1998 October,410,a ,515,a ,625,a ,755,a ,579,a ,
+1999 October,407,a ,516,a ,625,a ,748,a ,579,a ,
+2000 October,420,a ,525,a ,630,a ,767,a ,595,a ,
+2001 October,435,a ,545,a ,668,a ,789,a ,610,a ,
+2002 October,450,a ,566,a ,681,a ,800,a ,630,a ,
+2003 October,465,a ,590,a ,710,a ,827,a ,656,a ,
+2004 October,476,a ,605,a ,729,a ,849,a ,675,a ,
+2005 October,493,a ,625,a ,750,a ,850,a ,692,a ,
+2006 October,494,a ,625,a ,749,a ,850,a ,699,a ,
+2007 October,503,a ,649,a ,770,a ,898,a ,723,a ,
+2008 October,525,a ,665,a ,795,a ,887,a ,740,a ,
+2009 October,544,a ,679,a ,800,a ,902,a ,750,a ,
+2010 October,552,a ,685,a ,805,a ,916,a ,758,a ,
+2011 October,548,a ,689,a ,815,a ,936,a ,769,a ,
+2012 October,589,a ,722,a ,840,a ,959,a ,796,a ,
+2013 October,600,a ,726,a ,850,a ,984,a ,800,a ,
+2014 October,601,a ,739,a ,859,a ,"1,000",a ,815,a ,
+2015 October,619,a ,751,a ,875,a ,"1,016",a ,832,a ,
+2016 October,640,a ,769,a ,895,a ,"1,024",a ,853,a ,
+2017 October,651,a ,800,a ,933,a ,"1,099",a ,893,a ,
+2018 October,675,a ,833,a ,983,a ,"1,136",a ,934,a ,
+2019 October,697,a ,880,a ,"1,025",a ,"1,200",a ,976,a ,
+2020 October,750,a ,942,a ,"1,123",a ,"1,336",a ,"1,053",a ,
+2021 October,775,b ,"1,000",a ,"1,211",a ,"1,355",a ,"1,120",a ,
+2022 October,850,b ,"1,100",a ,"1,333",a ,"1,450",a ,"1,238",a ,
+2023 October,972,a ,"1,170",a ,"1,405",a ,"1,505",a ,"1,300",a ,
+
+Notes
+"The following letter codes are used to indicate the reliability of the estimates: a — Excellent, b — Very good, c — Good, d — Poor (Use with Caution))"
+** — Data suppressed to protect confidentiality or data not statistically reliable
+++ — Change in rent is not statistically significant. This means that the change in rent is not statistically different than zero (0). (Applies only to % Change of Average Rent Tables).
+Source,CMHC Rental Market Survey
