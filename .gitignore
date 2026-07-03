@@ -77,6 +77,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+data_cleaning/data/cleaned/cmhc/cmhc_initial_exploring.ipynb
 
 # IPython
 profile_default/
@@ -143,6 +144,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+agf_can_housing_policy/
 
 # Spyder project settings
 .spyderproject
