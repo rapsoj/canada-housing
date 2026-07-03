@@ -1,0 +1,5 @@
+"GeoUID","Date","DateString","Average and Median","Value","Survey","Series"
+"35563",2021-07-01,"2021","Average Household Income Before Taxes",121000,"Census","Income"
+"35563",2021-07-01,"2021","Median Household Income Before Taxes",108000,"Census","Income"
+"35563",2021-07-01,"2021","Average Household Income After Taxes",101300,"Census","Income"
+"35563",2021-07-01,"2021","Median Household Income After Taxes",93000,"Census","Income"

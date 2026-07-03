@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-cmhc_downloader.py
+download_cmhc.py
 
 Usage:
-    python cmhc_downloader.py
+    python download_cmhc.py
 
 Expects:
     config.yaml
+
+Install repo in terminal with:
+    R -e 'options(repos="https://cloud.r-project.org"); remotes::install_github("rapsoj/cmhc@all-fixes")'
 """
 
 import yaml
@@ -27,7 +30,7 @@ from tqdm import tqdm
 # Config Loader
 # ----------------------------
 
-def load_config(path: Path = Path("config.yaml")) -> dict:
+def load_config(path: Path = Path("cleaners/cmhc/config.yaml")) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
     with open(path, "r", encoding="utf-8") as f:
@@ -305,8 +308,9 @@ def main():
             series_folder = raw_base / sanitize_filename(series)
 
             if series_folder.exists() and not args.overwrite:
-                print(f"Skipping existing folder: {series_folder}")
-                continue
+                if any(series_folder.iterdir()):
+                    print(f"Skipping existing non-empty folder: {series_folder}")
+                    continue
 
             series_folder.mkdir(parents=True, exist_ok=True)
 

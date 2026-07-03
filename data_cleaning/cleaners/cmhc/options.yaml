@@ -13,6 +13,10 @@ Scss:
     - Dwelling Type
   Unabsorbed Inventory:
     - Dwelling Type
+  Absorbed Prices:
+    - Dwelling Type
+  Unabsorbed Prices:
+    - Dwelling Type
 
 Rms:
   Vacancy Rate:
