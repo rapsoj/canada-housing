@@ -284,43 +284,34 @@ chmc_stats_shapes_df['date'] = chmc_stats_shapes_df['date'].fillna(chmc_stats_sh
 #Drop columns Date and geo, due to redundacy
 chmc_stats_shapes_df = chmc_stats_shapes_df.drop(columns=['Date', 'geo'], errors='ignore')
 
-
 ### SPLIT DATASET INTO TRAIN AND TEST SETS
-
 def split_logic(group) -> tuple[pd.DataFrame, pd.DataFrame]:
     split_idx = int(len(group) * 0.8)
     return group.iloc[:split_idx], group.iloc[split_idx:]
 
-# Apply the split logic per CMA
-
+# Apply the split logic per CMA -> only used to obtain the split INDICES;
+# the actual data split happens AFTER imputation.
 temp_df = chmc_stats_shapes_df.sort_values(by=['cma_canonical', 'date']).copy()
-train_list = []
-test_list = []
+
+train_idx_list = []
+test_idx_list = []
 
 for _, group in temp_df.groupby('cma_canonical', sort=False):
     train_part, test_part = split_logic(group)
-    train_list.append(train_part)
-    test_list.append(test_part)
+    train_idx_list.append(train_part.index)
+    test_idx_list.append(test_part.index)
 
-# Concatenate back into the final split dataframes
-x_train = pd.concat(train_list)
-x_test = pd.concat(test_list)
+train_index = pd.Index(np.concatenate(train_idx_list))
+test_index = pd.Index(np.concatenate(test_idx_list))
 
-# Clean up memory
-del temp_df
-
-### GET GROUP'S COLUMNS TO ITERATE THROUGH DIFFERENT GROUPS. Structure: columns_by_group["Variable Group"]<- {'Variable_i'}i=1:n, n being "Variable Group" size.
-
+### GET GROUP'S COLUMNS TO ITERATE THROUGH DIFFERENT GROUPS.
 columns_by_group = {}
-
 for col in cmhc_df.columns:
     group = get_group_for_column(col)
     if group != "UNMATCHED":
         if group not in columns_by_group:
             columns_by_group[group] = []
         columns_by_group[group].append(col)
-
-#Previously seen that these columns are fully composed of NA, i.e. 100% missing values, for most CMAs, so not informative for upstream work.
 
 groups_to_exclude = [
     "SRMS – Condo Average Rent",
@@ -329,63 +320,48 @@ groups_to_exclude = [
     "SRMS – Other Secondary Rentals",
     "SRMS – Condo Vacancy Rate"
 ]
-
 columns_to_drop = []
 for group, cols in columns_by_group.items():
     if group in groups_to_exclude:
         columns_to_drop.extend(cols)
 
-# Ensure only columns present in the DataFrame are dropped
-columns_to_drop_train = [col for col in columns_to_drop if col in x_train.columns]
-columns_to_drop_test = [col for col in columns_to_drop if col in x_test.columns]
-
-x_train = x_train.drop(columns=columns_to_drop_train, errors='ignore')
-x_test = x_test.drop(columns=columns_to_drop_test, errors='ignore')
+# CHANGED: columns dropped once on temp_df (structural removal, identical
+# for train and test, so no need to repeat it per split)
+columns_to_drop_temp = [col for col in columns_to_drop if col in temp_df.columns]
+temp_df = temp_df.drop(columns=columns_to_drop_temp, errors='ignore')
 
 ### INTERPOLATION METHODS PER CMA
-
 def linear_impute(df, cols, distribute=False) -> pd.DataFrame:
-
     """
     Imputation for Census variables (2006–2021, 5-year intervals), Core Housing Needs (2006-2021, 5 year intervals) originally. Can be extended to other variables.
-
     - Performs linear interpolation at the annual level.
     - Extends the timeline backwards to 1990.
     - Expands each annual value to all timestamps within that year.
     - distribute=False -> constant value within each year.
     - distribute=True -> smooth distribution within each year.
     """
-
     df = df.copy()
     df["year"] = df["date"].dt.year
-
     # Dynamically determine the full_years range based on the DataFrame's date column
     min_year = df['date'].dt.year.min() if not df['date'].empty else 1990 # Fallback to 1990 if no dates
     max_year = df['date'].dt.year.max() if not df['date'].empty else 2021 # Fallback to 2022 if no dates
     full_years = np.arange(min_year, max_year + 1)
-
     for col in cols:
-
         def transform(x):
             # Aggregate observed values at the yearly level
             yearly = x.groupby(df.loc[x.index, "year"]).mean()
-
             # Ensure full coverage from the dynamic full_years range
             yearly = yearly.reindex(full_years)
-
             # Linear interpolation across years
             yearly_imputed = yearly.interpolate(method="linear", limit_direction="both")
-
-            out = pd.Series(index=x.index) #out = x.copy()
-
+            out = pd.Series(index=x.index)
             for yr, val in zip(full_years, yearly_imputed):
                 idx = df.loc[x.index, "year"] == yr
-
                 if distribute:
                     # Smooth distribution within the year
                     n = idx.sum()
                     if n > 1:
-                        # FIX: Use .iloc to access by integer position, not label
+                        # Use .iloc to access by integer position, not label
                         prev_val = yearly_imputed.iloc[max(0, list(full_years).index(yr)-1)]
                         step = (val - prev_val) / n
                         seq = np.array([prev_val + i*step for i in range(n)])
@@ -394,23 +370,16 @@ def linear_impute(df, cols, distribute=False) -> pd.DataFrame:
                 else:
                     # Constant value within the year
                     seq = np.full(idx.sum(), val)
-
                 out[idx] = seq
-
             return x.fillna(out)
-
         df[col] = df.groupby("cmapuid_int")[col].transform(transform)
-
     df.drop(columns="year", inplace=True)
     return df
 
-
 def impute_full_pipeline(df, columns_by_group, census_distribute=False):
-
     """
     Full automatic imputation pipeline.
     Applies the imputation function to each group of variables.
-
     Parameters
     ----------
     df : pd.DataFrame
@@ -419,123 +388,86 @@ def impute_full_pipeline(df, columns_by_group, census_distribute=False):
         Mapping from group name → list of columns.
     census_distribute : bool
         Whether Census/Core Housing Need should distribute values within each year.
-
     Returns
     -------
     pd.DataFrame
         Fully imputed dataset.
     """
-
     df_out = df.copy()
-
     for group, cols in columns_by_group.items():
-
         existing_cols = [c for c in cols if c in df_out.columns]
-
         if not existing_cols:
             print(f"Skipping group: {group} (No matching columns found in DataFrame)")
             continue
-
         if group == "RMS – Annual Average Rent Percent Change":
            print(f"Skipping group: {group} (will be computed after imputation)")
            continue
-
-
         print(f"→ Processing group: {group} ({len(existing_cols)} columns)")
-
-     
-        df_out = linear_impute(
-                df_out, existing_cols,
-                distribute=census_distribute)
-        
+        df_out = linear_impute(df_out, existing_cols, distribute=census_distribute)
         print(f"Imputation on {group} is finished.")
-
-
     return df_out
 
-
 def compute_rms_percent_change(df, avg_rent_col, pct_change_col) -> pd.DataFrame:
-
     """
     Computes RMS Annual Percent Rent Change from RMS Average Rent.
     - Percent change is derived, not interpolated.
     - Applies pct_change() at the annual level.
     - Creates a new column with suffix '_imputed'.
     """
-
     df = df.copy()
     df["year"] = df["date"].dt.year
-
     def transform(x):
         yearly = x.groupby(df.loc[x.index, "year"]).mean()
         pct = yearly.pct_change(fill_method=None) * 100
-
         out = x.copy()
         for yr, val in pct.items():
             out[df.loc[x.index, "year"] == yr] = val
-
         return out
-
-    # To avoid overwriting on existing column
+    # To avoid overwriting the existing column
     pct_change_col = f"{pct_change_col}_imputed"
-
     df[pct_change_col] = df.groupby("cmapuid_int")[avg_rent_col].transform(transform)
     df.drop(columns="year", inplace=True)
     return df
 
-
-# Computing RMS percent change, given RMS imputted results
-
-
 def apply_all_rms_changes(df_imputed, columns_by_group) -> pd.DataFrame:
-
     """
     Computes annual percent changes from the imputed Rent columns.
     """
-
     df_out = df_imputed.copy()
-
     # Exact name of the group skipped during the initial pipeline
     target_group = "RMS – Annual Average Rent Percent Change"
-
     if target_group not in columns_by_group:
         print(f"Warning: Group '{target_group}' not found in dictionary.")
         return df_out
-
     # Percent change columns (e.g., rms_average_rent_change_bedroom_type_1_bedroom)
     pct_cols = columns_by_group[target_group]
-
     for pct_col in pct_cols:
-
         # Identify the base column by removing '_change'
         # Example: 'rms_average_rent_change_bedroom_type_1_bedroom' -> 'rms_average_rent_bedroom_type_1_bedroom'
-
         base_rent_col = pct_col.replace("_change", "")
-
         if base_rent_col in df_out.columns:
             print(f"Deriving: {pct_col}_imputed from {base_rent_col}")
-
             # Call to the compute_rms_percent_change function
-            # Note: This function internally creates the _imputed suffix and leaves pct_col intact
-            df_out = compute_rms_percent_change(
-                df=df_out,
-                avg_rent_col=base_rent_col,
-                pct_change_col=pct_col
-            )
+            # Note: this function internally creates the _imputed suffix and leaves pct_col intact
+            df_out = compute_rms_percent_change(df=df_out, avg_rent_col=base_rent_col, pct_change_col=pct_col)
         else:
             print(f"Warning: Base column '{base_rent_col}' not found to derive '{pct_col}'")
-
     return df_out
 
 
-x_train_imputed = impute_full_pipeline(
-    x_train,
+temp_df_imputed = impute_full_pipeline(
+    temp_df,
     columns_by_group,
     census_distribute=False
 )
+temp_df_imputed = apply_all_rms_changes(temp_df_imputed, columns_by_group)
 
-x_train_imputed = apply_all_rms_changes(x_train_imputed, columns_by_group)
+# We split into train/test, reusing the indices computed at the start
+x_train_imputed = temp_df_imputed.loc[train_index]
+x_test_imputed = temp_df_imputed.loc[test_index]
 
+#To save memory
+del temp_df
 
 ### QUICK VISUALIZATION OF RESULTS ####
 
@@ -658,120 +590,182 @@ variables="census_all_households_age_of_population_25_34"
 #Keep a copy of the imputed training data with all features
 #x_train_imputed_all = x_train_imputed.copy()
 
-#Create one which doesn't have variables linearly dependent on the target
-x_train_imputed = x_train_imputed.dropna(subset=['house', 'land'])
-
-def prepare_data_for_feature_selection(df, drop_target_nan=True):
+def prepare_data_for_feature_selection(df, target_col='total', drop_target_nan=True):
 
     df_copy = df.copy()
-
     df_copy = df_copy.sort_values(by=['cma_canonical', 'date']).reset_index(drop=True)
 
-    # --- Identify columns to exclude from lagging and being direct features ---
-    base_excluded_cols = [
-        'total',       #The target variable itself
-        'cmapuid_int', #Identifier
-        'house',       # Excluded from being a predictor (lagged or not)
-        'land' ,        # Excluded from being a predictor (lagged or not)
-        'date',         #Excluded because it's not a relevant feature
-        'GeoUID'        #Excluded because it's not a relevant feature  
-    ]
+    # --- Identifiers / non-feature columns, excluded regardless of target ---
+    non_feature_identifiers = ['cmapuid_int', 'date', 'GeoUID']
+
+    # --- Which of {total, house, land} must be excluded entirely (not even lagged) ---
+    if target_col == 'total':
+        # total = house + land -> using either as a (even lagged) feature is too close to leakage
+        excluded_targets = {'house', 'land'}
+    else:
+        # For house/land models: only 'total' is excluded. Land when predicting house, house when predicting land is allowed as a feature.
+        excluded_targets = {'total'}
+
+    base_excluded_cols = non_feature_identifiers + list(excluded_targets) + [target_col]
 
     # --- Identify all numerical columns present in the DataFrame ---
     all_numerical_cols = df_copy.select_dtypes(include=np.number).columns.tolist()
 
-    # --- Determine which columns will be lagged (all numerical except time features and explicitly excluded) ---
-    cols_to_lag = [
-        col for col in all_numerical_cols
-        if col not in base_excluded_cols
-    ]
+    # --- Columns that will be lagged (all numerical except excluded ones) ---
+    cols_to_lag = [col for col in all_numerical_cols if col not in base_excluded_cols]
 
-    # Special handling for 'total' to ensure 'total_lag_1' and 'total_lag_12' are created and used.
-    if 'total' in all_numerical_cols:
-        # Ensure 'total' is in cols_to_lag to generate its lags
-        if 'total' not in cols_to_lag:
-            cols_to_lag.append('total')
+    # Special handling: always create the target's own lag (autoregressive feature),
+    # same logic that previously applied only to 'total'.
+    if target_col in all_numerical_cols and target_col not in cols_to_lag:
+        cols_to_lag.append(target_col)
 
-    # --- Create lag features for selected numerical columns ---
+    # --- Create lag features ---
     lagged_series = []
     lagged_feature_names = []
-
     for col in cols_to_lag:
         new_lag_col_name_1 = f'{col}_lag_1'
         lagged_series.append(df_copy.groupby('cma_canonical')[col].shift(1).rename(new_lag_col_name_1))
         lagged_feature_names.append(new_lag_col_name_1)
 
-    # Concatenate all lagged features at once
     if lagged_series:
         df_copy = pd.concat([df_copy] + lagged_series, axis=1)
 
-    # --- Construct the final set of feature columns for X in feature selection ---
-    # These are only the new lagged features after removing direct time components.
     final_feature_cols = lagged_feature_names
-
     X_all_features = df_copy[final_feature_cols]
-    y = df_copy['total']
+    y = df_copy[target_col]
     cma_col = df_copy['cma_canonical']
 
-    # Impute NaNs in X_all_features first, as suggested by the model context.
-    # Use ffill then bfill within each CMA group.
+    # Impute NaNs: ffill/bfill within each CMA group, then fallback to 0
     X_imputed = X_all_features.groupby(cma_col).ffill().bfill()
-    # As a fallback, fill any remaining NaNs (e.g., if a group was entirely NaN after shifting)
-    X_imputed = X_imputed.fillna(0) # Ensure no NaNs in features for SFS
+    X_imputed = X_imputed.fillna(0)
 
-    # Combine X_imputed and y
     combined_df = pd.concat([X_imputed, y], axis=1)
-
-    # Apply dropna conditionally, only on the target variable 'total' for training data.
     if drop_target_nan:
-        # For training, drop rows where the target 'total' is NaN.
-        combined_df_cleaned = combined_df.dropna(subset=['total'])
+        combined_df_cleaned = combined_df.dropna(subset=[target_col])
     else:
-        # For test set, we might want to keep rows with NaN targets for prediction,
-        # but features must be clean (already handled by X_imputed).
-        # No additional dropping on features is needed here, just ensure target is aligned.
-        combined_df_cleaned = combined_df #X_imputed is already clean
+        combined_df_cleaned = combined_df
 
-    X_final = combined_df_cleaned[X_imputed.columns] # Re-select columns in case any were dropped
-    y_final = combined_df_cleaned['total']
+    X_final = combined_df_cleaned[X_imputed.columns]
+    y_final = combined_df_cleaned[target_col]
 
-    # Add a check to ensure X_final and y_final are not empty
     if X_final.empty or y_final.empty:
         raise ValueError("DataFrame became empty after NaN handling. Adjust imputation or dropna strategy.")
 
     return X_final, y_final
 
-# Define filenames for saving/loading
-X_TRAIN_FS_FILE = ROOT / "prediction" / "X_train_FS.csv"
-Y_TRAIN_FS_FILE = ROOT / "prediction" / "y_train_FS.csv"
 
-if os.path.exists(X_TRAIN_FS_FILE) and os.path.exists(Y_TRAIN_FS_FILE):
-    print(f"Loading X_train_fs and y_train_fs from {X_TRAIN_FS_FILE} and {Y_TRAIN_FS_FILE}...")
-    X_train_fs = pd.read_csv(X_TRAIN_FS_FILE)
-    y_train_fs = pd.read_csv(Y_TRAIN_FS_FILE).squeeze() # Use squeeze for Series
+#Ensure there are non-NA values n target variables
+x_train_imputed = x_train_imputed.dropna(subset=['house', 'land'])
 
-else:
-    print("Files not found. Preparing data for feature selection and saving...")
-    # Using x_train_imputed to ensure all original CMHC features are considered before exclusion rules are applied
-    X_final_full, y_final_full = prepare_data_for_feature_selection(x_train_imputed, drop_target_nan=True)
+TARGETS = ['total', 'house', 'land']
+DOWNSAMPLE_FRACTION = 0.15
+RANDOM_STATE = 42
+OUT_DIR = ROOT / "prediction"
 
-    X_train_fs, _, y_train_fs, _ = train_test_split(X_final_full, y_final_full, test_size=0.85, random_state=42)
+# Keep the completeness filter consistent between train and test
+x_train_imputed = x_train_imputed.dropna(subset=['house', 'land'])
+x_test_imputed = x_test_imputed.dropna(subset=['house', 'land'])
 
-    constant_features = X_train_fs.columns[X_train_fs.nunique() == 1]
 
-    if not constant_features.empty:
-       print(f"Constant features to drop: {list(constant_features)}")
-       X_train_fs = X_train_fs.drop(columns=constant_features)
+def get_fs_filepaths(target):
 
-    # Save to CSV files
+    return {
+        'X_train_full': OUT_DIR / f"X_train_full_{target}.csv",
+        'y_train_full': OUT_DIR / f"y_train_full_{target}.csv",
+        'X_train_fs':   OUT_DIR / f"X_train_FS_{target}.csv",
+        'y_train_fs':   OUT_DIR / f"y_train_FS_{target}.csv",
+        'X_test_full':  OUT_DIR / f"X_test_full_{target}.csv",
+        'y_test_full':  OUT_DIR / f"y_test_full_{target}.csv",
+        # Stores which columns were dropped as constant during train,
+        # so test always reuses the exact same feature set (never recomputed on test)
+        'dropped_cols': OUT_DIR / f"dropped_constant_features_{target}.txt",
+    }
 
-    X_train_fs.to_csv(X_TRAIN_FS_FILE, index=False)
-    y_train_fs.to_csv(Y_TRAIN_FS_FILE, index=False, header=True) # Save header for y for consistency
-    print(f"Saved X_train_fs to {X_TRAIN_FS_FILE}")
-    print(f"Saved y_train_fs to {Y_TRAIN_FS_FILE}")
 
-    print(f"X_train_fs shape: {X_train_fs.shape}")
+def build_train_data(train_df, target, paths):
 
+    if paths['X_train_full'].exists() and paths['y_train_full'].exists() \
+       and paths['X_train_fs'].exists() and paths['y_train_fs'].exists() \
+       and paths['dropped_cols'].exists():
+        print(f"[{target}] Train files already exist. Loading...")
+        X_train_full = pd.read_csv(paths['X_train_full'])
+        y_train_full = pd.read_csv(paths['y_train_full']).squeeze()
+        X_train_fs = pd.read_csv(paths['X_train_fs'])
+        y_train_fs = pd.read_csv(paths['y_train_fs']).squeeze()
+        dropped_cols = paths['dropped_cols'].read_text().splitlines() if paths['dropped_cols'].stat().st_size > 0 else []
+        return X_train_full, y_train_full, X_train_fs, y_train_fs, dropped_cols
+
+    print(f"[{target}] Train files not found. Building...")
+    X_train_full, y_train_full = prepare_data_for_feature_selection(
+        train_df, target_col=target, drop_target_nan=True
+    )
+
+    # Constant features are computed ONLY on train, then reused everywhere
+    constant_features = X_train_full.columns[X_train_full.nunique() == 1]
+    dropped_cols = list(constant_features)
+    if dropped_cols:
+        print(f"[{target}] Dropping constant features: {dropped_cols}")
+        X_train_full = X_train_full.drop(columns=dropped_cols)
+
+    X_train_fs, _, y_train_fs, _ = train_test_split(
+        X_train_full, y_train_full,
+        test_size=1 - DOWNSAMPLE_FRACTION, random_state=RANDOM_STATE
+    )
+
+    X_train_full.to_csv(paths['X_train_full'], index=False)
+    y_train_full.to_csv(paths['y_train_full'], index=False, header=True)
+    X_train_fs.to_csv(paths['X_train_fs'], index=False)
+    y_train_fs.to_csv(paths['y_train_fs'], index=False, header=True)
+    paths['dropped_cols'].write_text("\n".join(dropped_cols))
+
+    print(f"[{target}] Saved train full with size: {X_train_full.shape} / FS with size: {X_train_fs.shape}")
+    return X_train_full, y_train_full, X_train_fs, y_train_fs, dropped_cols
+
+
+def build_test_data(test_df, target, paths, train_columns, dropped_cols):
+
+    if paths['X_test_full'].exists() and paths['y_test_full'].exists():
+        print(f"[{target}] Test files already exist. Loading...")
+        X_test_full = pd.read_csv(paths['X_test_full'])
+        y_test_full = pd.read_csv(paths['y_test_full']).squeeze()
+        return X_test_full, y_test_full
+
+    print(f"[{target}] Test files not found. Building...")
+    # drop_target_nan=False: keep rows even if the target is NaN, we still want predictions for them
+    X_test_full, y_test_full = prepare_data_for_feature_selection(
+        test_df, target_col=target, drop_target_nan=False
+    )
+
+    cols_to_drop = [c for c in dropped_cols if c in X_test_full.columns]
+    if cols_to_drop:
+        X_test_full = X_test_full.drop(columns=cols_to_drop)
+
+    # Sanity check: train and test must end up with the exact same feature columns
+    assert list(X_test_full.columns) == list(train_columns), \
+        f"[{target}] Column mismatch between train and test features!"
+
+    X_test_full.to_csv(paths['X_test_full'], index=False)
+    y_test_full.to_csv(paths['y_test_full'], index=False, header=True)
+    print(f"[{target}] Saved test full with size: {X_test_full.shape}")
+    return X_test_full, y_test_full
+
+
+results = {}
+
+for target in TARGETS:
+    
+    paths = get_fs_filepaths(target)
+    X_train_full, y_train_full, X_train_fs, y_train_fs, dropped_cols = build_train_data(
+        x_train_imputed, target, paths
+    )
+    X_test_full, y_test_full = build_test_data(
+        x_test_imputed, target, paths, X_train_full.columns, dropped_cols
+    )
+    results[target] = {
+        'X_train_full': X_train_full, 'y_train_full': y_train_full,
+        'X_train_fs': X_train_fs, 'y_train_fs': y_train_fs,
+        'X_test_full': X_test_full, 'y_test_full': y_test_full,
+    }
 
 
 
