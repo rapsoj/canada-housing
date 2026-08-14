@@ -1,10 +1,10 @@
-# Canadian Housing Policy — Prediction Pipeline
+# Canadian Housing Policy — Evaluation Pipeline
 
 ---
 
 ## How to Run
 
-**1. Input data** — place cleaned source files in:
+**1. Input data**: place cleaned source files in:
 ```
 data_cleaning/data/cleaned/cmhc/cmhc.csv
 data_cleaning/data/cleaned/stats_can/cleaned_data.csv
@@ -47,3 +47,21 @@ Each file contains the following columns:
 
 Note: the first row of each CMA has `NaN` in the `*_pred` columns, since there is no prior value to shift within that split.
 
+**4. Run evaluation:**
+```bash
+$ python evaluation/evaluation.py
+```
+**Output**
+
+| File | Content |
+|---|---|
+| `evaluation/evals/persistence_baseline_metrics.json` | MDA, NMSE, NRMSE and NMAE for the persistence baseline, per target and split (train/test) |
+| `evaluation/evals/plots/{split}_{target}_{cma}.png` | Actual vs. Predicted plots for 5 randomly-selected CMAs, per target and split |
+
+Each row in `persistence_baseline_metrics.json` corresponds to one `(split, target)` pair, with columns:
+
+| Column | Content |
+|---|---|
+| `split`, `target` | Identifiers (`train`/`test`, `total`/`house`/`land`) |
+| `MDA` | Mean Directional Accuracy — share of correctly predicted up/down movements |
+| `NMSE`, `NRMSE`, `NMAE` | Mean/root-mean/absolute squared error, normalized by the number of valid observations |

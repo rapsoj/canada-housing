@@ -648,10 +648,15 @@ def prepare_data_for_feature_selection(df, target_col='total', drop_target_nan=T
     X_final = combined_df_cleaned[X_imputed.columns]
     y_final = combined_df_cleaned[target_col]
 
+    # carry identifiers aligned with the same final index, needed
+    # downstream for the baseline model and for merging predictions across targets
+ 
+    ids_final = df_copy.loc[y_final.index, ['cma_canonical', 'date']]
+
     if X_final.empty or y_final.empty:
         raise ValueError("DataFrame became empty after NaN handling. Adjust imputation or dropna strategy.")
 
-    return X_final, y_final
+    return X_final, y_final, ids_final
 
 
 #Ensure there are non-NA values n target variables
@@ -689,14 +694,14 @@ def build_train_data(train_df, target, paths):
        and paths['dropped_cols'].exists():
         print(f"[{target}] Train files already exist. Loading...")
         X_train_full = pd.read_csv(paths['X_train_full'])
-        y_train_full = pd.read_csv(paths['y_train_full']).squeeze()
+        y_train_full = pd.read_csv(paths['y_train_full'])[target]
         X_train_fs = pd.read_csv(paths['X_train_fs'])
         y_train_fs = pd.read_csv(paths['y_train_fs']).squeeze()
         dropped_cols = paths['dropped_cols'].read_text().splitlines() if paths['dropped_cols'].stat().st_size > 0 else []
         return X_train_full, y_train_full, X_train_fs, y_train_fs, dropped_cols
 
     print(f"[{target}] Train files not found. Building...")
-    X_train_full, y_train_full = prepare_data_for_feature_selection(
+    X_train_full, y_train_full, ids_train_full = prepare_data_for_feature_selection(
         train_df, target_col=target, drop_target_nan=True
     )
 
@@ -713,9 +718,13 @@ def build_train_data(train_df, target, paths):
     )
 
     X_train_full.to_csv(paths['X_train_full'], index=False)
-    y_train_full.to_csv(paths['y_train_full'], index=False, header=True)
+
+    y_export = pd.concat([ids_train_full.reset_index(drop=True), y_train_full.reset_index(drop=True)], axis=1)
+    y_export.to_csv(paths['y_train_full'], index=False)
+
     X_train_fs.to_csv(paths['X_train_fs'], index=False)
     y_train_fs.to_csv(paths['y_train_fs'], index=False, header=True)
+
     paths['dropped_cols'].write_text("\n".join(dropped_cols))
 
     print(f"[{target}] Saved train full with size: {X_train_full.shape} / FS with size: {X_train_fs.shape}")
@@ -727,12 +736,12 @@ def build_test_data(test_df, target, paths, train_columns, dropped_cols):
     if paths['X_test_full'].exists() and paths['y_test_full'].exists():
         print(f"[{target}] Test files already exist. Loading...")
         X_test_full = pd.read_csv(paths['X_test_full'])
-        y_test_full = pd.read_csv(paths['y_test_full']).squeeze()
+        y_test_full = pd.read_csv(paths['y_test_full'])[target]
         return X_test_full, y_test_full
 
     print(f"[{target}] Test files not found. Building...")
     # drop_target_nan=False: keep rows even if the target is NaN, we still want predictions for them
-    X_test_full, y_test_full = prepare_data_for_feature_selection(
+    X_test_full, y_test_full, ids_test_full = prepare_data_for_feature_selection(
         test_df, target_col=target, drop_target_nan=False
     )
 
@@ -745,7 +754,9 @@ def build_test_data(test_df, target, paths, train_columns, dropped_cols):
         f"[{target}] Column mismatch between train and test features!"
 
     X_test_full.to_csv(paths['X_test_full'], index=False)
-    y_test_full.to_csv(paths['y_test_full'], index=False, header=True)
+    y_export = pd.concat([ids_test_full.reset_index(drop=True), y_test_full.reset_index(drop=True)], axis=1)
+    y_export.to_csv(paths['y_test_full'], index=False)
+
     print(f"[{target}] Saved test full with size: {X_test_full.shape}")
     return X_test_full, y_test_full
 

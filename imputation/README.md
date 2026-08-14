@@ -98,16 +98,16 @@ Structure of interpolation pipeline: functions applied per CMA, iterating throug
 
 ---
 
-### 5. Data Preparation for Feature Selection
+### 5. Data Preparation for Prediction Pipeline
 
-Final output: `X_train_FS.csv` and `y_train_FS.csv`, with lagged (t−1) features ready for Feature Selection (FS).
+**Output**
 
-> **Note:** Due to computation constraints, only 15% of the original `X_train` and `y_train` is currently saved.
+For each target in {total, house, land}, in `prediction/`:
 
-In `imputation/data_imputation.py`, make sure the save path points to `prediction/`:
+| File | Content |
+|---|---|
+| `X_train_full_{target}.csv` / `y_train_full_{target}.csv` | Full training set, includes `cma_canonical` and `date` alongside the target column, for downstream use |
+| `X_train_FS_{target}.csv` / `y_train_FS_{target}.csv` | Training set downsampled to 15%, for Feature Selection (FS) |
+| `X_test_full_{target}.csv` / `y_test_full_{target}.csv` | Full test set (no downsampling), includes `cma_canonical` and `date` alongside the target column, for downstream use |
+| `dropped_constant_features_{target}.txt` | List of columns dropped for being constant in training: ensures reproducibility and that train/test always share the same columns |
 
-```python
-ROOT = Path(__file__).resolve().parent.parent
-X_TRAIN_FS_FILE = ROOT / "prediction" / "X_train_FS.csv"
-Y_TRAIN_FS_FILE = ROOT / "prediction" / "y_train_FS.csv"
-```
