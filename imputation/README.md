@@ -4,7 +4,7 @@
 
 ## How to Run
 
-**1. Input data** — place cleaned source files in:
+**1. Input data** — Cleaned source files are in:
 ```
 data_cleaning/data/cleaned/cmhc/cmhc.csv
 data_cleaning/data/cleaned/stats_can/cleaned_data.csv
@@ -15,12 +15,6 @@ data_cleaning/data/cleaned/cma_boundary/lcma000b21a_e.shp
 ```bash
 $ python imputation/data_imputation.py
 ```
-Output: `prediction/X_train_FS.csv` and `prediction/y_train_FS.csv`
-
-**3. Run predictions:**
-```bash
-$ python prediction/prediction.py
-```
 
 ---
 
@@ -28,7 +22,11 @@ $ python prediction/prediction.py
 
 ### 1. Load Data and Inspect Structure
 
-Load packages and inspect structure of different data sources: StatsCan, CMHC and spatial data.
+Load packages and inspect structure of different data sources: 
+
+- StatsCan: with information on target variables, date and CMA identifier;
+- CMHC: socioeconomic data, with date and CMA identifier;
+- Spatial data.
 
 **Summary — StatsCan data**
 
@@ -63,15 +61,10 @@ Out of the 24 CMAs, the following regions have a different starting date:
 
 ### 2. Analyse Date Patterns per CMA
 
-Group variables into patterns, as data came from various sources (StatsCan, CMHC).
+Group CMHC variables into groups, as shown [here](https://github.com/rapsoj/canada-housing/tree/main/data_cleaning/data/cleaned/cmhc), because data comes from various sources.
 
-Structure: `GROUP_PATTERNS['Variable_*']` ← `"Variable Group"`
+Example of grouping: `GROUP_PATTERNS["scss_starts_dwelling_type_*"]` ← `"SCSS – Construction Started"` — all variables of the form `"scss_starts_dwelling_type"` are grouped under `"SCSS – Construction Started"`.
 
----
-
-### 3. Fill Missing Census Values
-
-Join three different datasets and impute missing values using linear interpolation, per CMA.
 
 **Summary — Missing values on `house`, `land` and `total` targets**
 
@@ -86,9 +79,13 @@ Join three different datasets and impute missing values using linear interpolati
 | Sherbrooke, Quebec | 2006–2016 |
 | Trois-Rivières, Quebec | 1990–2016 |
 
-Structure of interpolation pipeline: functions applied per CMA, iterating through variable groups.
+---
 
-`columns_by_group["Variable Group"]` ← `{'Variable_i'}` for i = 1…n
+### 3. Interpolate Missing CMHC Values
+
+Join StatsCan, CMHC and spatial datasets by CMA identifier and impute missing values using linear interpolation, per CMA. 
+
+**Structure of the interpolation pipeline**: for each CMA, functions iterate through variable groups of `GROUP_PATTERNS` and apply a flat interpolation: the known value is held constant and distributed equally across all periods until the next observation — e.g., monthly for SCSS, yearly for RMS and SRMS, and every 5 years for Census and Core Housing Need.
 
 ---
 
@@ -109,5 +106,5 @@ For each target in {total, house, land}, in `prediction/`:
 | `X_train_full_{target}.csv` / `y_train_full_{target}.csv` | Full training set, includes `cma_canonical` and `date` alongside the target column, for downstream use |
 | `X_train_FS_{target}.csv` / `y_train_FS_{target}.csv` | Training set downsampled to 15%, for Feature Selection (FS) |
 | `X_test_full_{target}.csv` / `y_test_full_{target}.csv` | Full test set (no downsampling), includes `cma_canonical` and `date` alongside the target column, for downstream use |
-| `dropped_constant_features_{target}.txt` | List of columns dropped for being constant in training: ensures reproducibility and that train/test always share the same columns |
+| `dropped_constant_features_{target}.txt` | List of columns dropped for being redundant (only one unique value): ensures reproducibility and that train/test always share the same columns |
 
